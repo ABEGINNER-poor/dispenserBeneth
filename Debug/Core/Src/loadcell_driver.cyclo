@@ -1,0 +1,9 @@
+../Core/Src/loadcell_driver.c:28:5:loadcell_init	3
+../Core/Src/loadcell_driver.c:37:5:loadcell_read_net_weight	3
+../Core/Src/loadcell_driver.c:46:5:loadcell_zero	3
+../Core/Src/loadcell_driver.c:57:5:loadcell_tare	3
+../Core/Src/loadcell_driver.c:67:5:loadcell_clear_tare	2
+../Core/Src/loadcell_driver.c:76:5:loadcell_calibrate	2
+../Core/Src/loadcell_driver.c:89:5:loadcell_set_unit	1
+../Core/Src/loadcell_driver.c:95:5:loadcell_close	1
+../Core/Src/loadcell_driver.c:101:14:eMBRegHoldingCB	3

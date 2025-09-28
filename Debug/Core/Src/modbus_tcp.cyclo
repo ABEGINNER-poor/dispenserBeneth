@@ -1,0 +1,3 @@
+../Core/Src/modbus_tcp.c:7:6:modbus_tcp_init	1
+../Core/Src/modbus_tcp.c:15:7:modbus_tcp_accept	1
+../Core/Src/modbus_tcp.c:21:7:modbus_tcp_recv	12
