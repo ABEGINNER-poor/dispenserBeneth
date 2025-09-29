@@ -186,6 +186,28 @@ SECTIONS
     __bss_end__ = _ebss;
   } >RAM
 
+  /* Ethernet DMA descriptors section - must be 32-byte aligned */
+  . = ALIGN(32);
+  .eth_desc :
+  {
+    . = ALIGN(32);
+    _seth_desc = .;       /* create a global symbol at eth_desc start */
+    *(.eth_desc)
+    . = ALIGN(32);
+    _eeth_desc = .;       /* create a global symbol at eth_desc end */
+  } >RAM
+
+  /* Ethernet DMA buffers section - must be 32-byte aligned */
+  . = ALIGN(32);
+  .eth_buf :
+  {
+    . = ALIGN(32);
+    _seth_buf = .;        /* create a global symbol at eth_buf start */
+    *(.eth_buf)
+    . = ALIGN(32);
+    _eeth_buf = .;        /* create a global symbol at eth_buf end */
+  } >RAM
+
   /* User_heap_stack section, used to check that there is enough "RAM" Ram  type memory left */
   ._user_heap_stack :
   {

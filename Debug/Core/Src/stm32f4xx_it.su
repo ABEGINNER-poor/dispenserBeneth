@@ -7,4 +7,5 @@
 ../Core/Src/stm32f4xx_it.c:168:6:TIM8_TRG_COM_TIM14_IRQHandler	8	static
 ../Core/Src/stm32f4xx_it.c:182:6:TIM7_IRQHandler	8	static
 ../Core/Src/stm32f4xx_it.c:196:6:ETH_IRQHandler	8	static
-../Core/Src/stm32f4xx_it.c:210:6:OTG_FS_IRQHandler	8	static
+../Core/Src/stm32f4xx_it.c:210:6:ETH_WKUP_IRQHandler	8	static
+../Core/Src/stm32f4xx_it.c:224:6:OTG_FS_IRQHandler	8	static

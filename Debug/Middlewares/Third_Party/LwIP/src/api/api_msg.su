@@ -26,3 +26,5 @@
 ../Middlewares/Third_Party/LwIP/src/api/api_msg.c:1813:1:lwip_netconn_do_write	24	static
 ../Middlewares/Third_Party/LwIP/src/api/api_msg.c:1867:1:lwip_netconn_do_getaddr	24	static
 ../Middlewares/Third_Party/LwIP/src/api/api_msg.c:1934:1:lwip_netconn_do_close	24	static
+../Middlewares/Third_Party/LwIP/src/api/api_msg.c:2014:1:lwip_netconn_do_join_leave_group	24	static
+../Middlewares/Third_Party/LwIP/src/api/api_msg.c:2060:1:lwip_netconn_do_join_leave_group_netif	24	static

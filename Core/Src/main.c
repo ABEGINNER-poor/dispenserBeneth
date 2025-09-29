@@ -24,8 +24,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "yt8512c.h"
-#include "ethernetif.h"
+#include <stdbool.h>
+#include <string.h>
+#include <stdio.h>
+#include "usbd_cdc_if.h"
+#include "lwip/netif.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,7 +47,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-extern yt8512c_object_t yt8512c;
 TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart1;
@@ -54,6 +56,7 @@ SRAM_HandleTypeDef hsram3;
 
 osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
+
 
 /* USER CODE END PV */
 
@@ -67,7 +70,11 @@ static void MX_TIM7_Init(void);
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
-
+void Check_Network_Status(void);
+void Debug_Packet_Reception_Chain(void);
+void Debug_LWIP_Protocol_Stack(void);
+void Debug_ARP_Table(void);
+void Debug_Network_Interface(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -149,6 +156,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }
@@ -321,7 +329,6 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
   __HAL_RCC_GPIOE_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
@@ -336,9 +343,9 @@ static void MX_GPIO_Init(void)
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
   // PHY 复位
-      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_RESET); // 拉低
+      /*HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_RESET); // 拉低
       HAL_Delay(20); // 延时 >10ms
-      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_SET);   // 拉高
+      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_SET);   // 拉高*/
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
@@ -397,6 +404,128 @@ static void MX_FSMC_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+/**
+ * @brief 检查网络状态
+ */
+void Check_Network_Status(void)
+{
+    char msg[128];
+    extern ETH_HandleTypeDef heth;
+    extern struct netif gnetif;
+    
+    // 1. 检查ETH初始化状态
+    snprintf(msg, sizeof(msg), "ETH gState: %d\r\n", heth.gState);
+    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+    
+    // 2. 检查PHY链路状态
+    uint32_t phy_reg = 0;
+    if (HAL_ETH_ReadPHYRegister(&heth, 0x00, PHY_BSR, &phy_reg) == HAL_OK) {
+        bool link_up = (phy_reg & PHY_LINKED_STATUS) != 0;
+        snprintf(msg, sizeof(msg), "PHY BSR: 0x%04lX, Link: %s\r\n", 
+                 phy_reg & 0xFFFF, link_up ? "UP" : "DOWN");
+        CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+    } else {
+        CDC_Transmit_FS((uint8_t*)"PHY Read Failed\r\n", 17);
+    }
+    
+    // 3. 检查LWIP netif状态
+    if (netif_is_up(&gnetif)) {
+        if (netif_is_link_up(&gnetif)) {
+            snprintf(msg, sizeof(msg), "LWIP: UP, IP: %d.%d.%d.%d\r\n",
+                     (int)((gnetif.ip_addr.addr >> 0) & 0xFF),
+                     (int)((gnetif.ip_addr.addr >> 8) & 0xFF),
+                     (int)((gnetif.ip_addr.addr >> 16) & 0xFF),
+                     (int)((gnetif.ip_addr.addr >> 24) & 0xFF));
+        } else {
+            snprintf(msg, sizeof(msg), "LWIP: Interface UP, but Link DOWN\r\n");
+        }
+    } else {
+        snprintf(msg, sizeof(msg), "LWIP: Interface DOWN\r\n");
+    }
+    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+    
+    // 4. 检查DMA状态
+    uint32_t dma_status = ETH->DMASR;
+    snprintf(msg, sizeof(msg), "DMA Status: 0x%08lX\r\n", dma_status);
+    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+    
+    CDC_Transmit_FS((uint8_t*)"--- Network Check Complete ---\r\n", 33);
+}
+
+/**
+ * @brief 调试数据包接收链路 - 专门排查ping包为什么到不了ICMP层
+ */
+void Debug_Packet_Reception_Chain(void)
+{
+    char msg[128];
+    extern ETH_HandleTypeDef heth;
+    extern struct netif gnetif;
+    
+    CDC_Transmit_FS((uint8_t*)"\r\n=== PING包接收链路调试 ===\r\n", 32);
+    
+    // 1. 检查ETH DMA接收状态
+    uint32_t dma_sr = ETH->DMASR;
+    snprintf(msg, sizeof(msg), "DMA Status: 0x%08lX\r\n", dma_sr);
+    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+    
+    // 检查ETH是否启动
+    uint32_t maccr = ETH->MACCR;
+    snprintf(msg, sizeof(msg), "ETH MACCR: 0x%08lX\r\n", maccr);
+    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+    
+    if (maccr & (1 << 2)) {  // RE - Receiver Enable
+        CDC_Transmit_FS((uint8_t*)"✅ ETH接收已启用\r\n", 21);
+    } else {
+        CDC_Transmit_FS((uint8_t*)"❌ ETH接收未启用！\r\n", 23);
+    }
+    
+    if (maccr & (1 << 3)) {  // TE - Transmitter Enable  
+        CDC_Transmit_FS((uint8_t*)"✅ ETH发送已启用\r\n", 21);
+    } else {
+        CDC_Transmit_FS((uint8_t*)"❌ ETH发送未启用！\r\n", 23);
+    }
+    
+    // 检查DMA接收相关位
+    if (dma_sr & (1 << 6)) {  // RI - Receive Interrupt
+        CDC_Transmit_FS((uint8_t*)"✅ DMA接收中断标志置位\r\n", 28);
+    } else {
+        CDC_Transmit_FS((uint8_t*)"❌ DMA接收中断标志未置位\r\n", 30);
+    }
+    
+    if (dma_sr & (1 << 7)) {  // RU - Receive Buffer Unavailable
+        CDC_Transmit_FS((uint8_t*)"⚠️ 接收缓冲区不可用\r\n", 24);
+    }
+    
+    // 2. 检查ETH MAC接收状态
+    uint32_t mac_sr = ETH->MACSR;
+    snprintf(msg, sizeof(msg), "MAC Status: 0x%08lX\r\n", mac_sr);
+    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+    
+    // 3. 检查接收描述符状态 (跳过具体地址检查)
+    CDC_Transmit_FS((uint8_t*)"RX Desc: Configured\r\n", 21);
+    
+    // 4. 检查ETH错误状态
+    uint32_t eth_error = HAL_ETH_GetError(&heth);
+    if (eth_error != HAL_ETH_ERROR_NONE) {
+        snprintf(msg, sizeof(msg), "❌ ETH Error: 0x%08lX\r\n", eth_error);
+        CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+    } else {
+        CDC_Transmit_FS((uint8_t*)"✅ ETH Error: None\r\n", 21);
+    }
+    
+    // 5. 检查网络接口基本信息
+    snprintf(msg, sizeof(msg), "LWIP netif name: %c%c\r\n", gnetif.name[0], gnetif.name[1]);
+    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+    
+    snprintf(msg, sizeof(msg), "LWIP MTU: %u\r\n", gnetif.mtu);
+    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+    
+    CDC_Transmit_FS((uint8_t*)"💡 建议: 在HAL_ETH_RxCpltCallback中加断点\r\n", 48);
+    CDC_Transmit_FS((uint8_t*)"💡 建议: 在ethernetif_input中加断点\r\n", 38);
+    
+    CDC_Transmit_FS((uint8_t*)"--- 接收链路调试完成 ---\r\n", 29);
+}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -414,30 +543,37 @@ void StartDefaultTask(void const * argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
-  char msg1[] = "TEST BEGIN\r\n";
-  char msg2[] = "TEST END\r\n";
-
+  char usb_msg[128];
+  uint32_t cycle_counter = 0;
+  uint32_t network_check_counter = 0;
 
   // 等待 USB 枚举就绪
   osDelay(2000);
+  
+  CDC_Transmit_FS((uint8_t*)"=== STM32 Network Test Started ===\r\n", 37);
 
   for(;;)
   {
-    // 格式化并发送调试消息：开始测试
-	CDC_Transmit_FS(msg2,strlen(msg2));
-
-    HAL_Delay(500); // 短暂延迟，避免缓冲溢出
-    int32_t phy_status = yt8512c_get_link_state(&yt8512c);
-	char buffer[32];
-	snprintf(buffer, sizeof(buffer), "Main PHY Status: %d\r\n", phy_status);
-	CDC_Transmit_FS((uint8_t *)buffer, strlen(buffer));
-    // 舵机动作：移动到 800 位置（假设 BusServo_Move 已定义）
-    //BusServo_Move(1, 800, 500);
-    // 舵机动作：移动到 0 位置
-    //BusServo_Move(1, 0, 500);
-    // 格式化并发送调试消息：结束测试
-    CDC_Transmit_FS(msg1,strlen(msg1));
-    HAL_Delay(500);
+    cycle_counter++;
+    
+    // 每5个周期（10秒）执行一次网络状态检查
+    if (++network_check_counter >= 5) {
+        network_check_counter = 0;
+        
+        snprintf(usb_msg, sizeof(usb_msg), "\r\n=== Network Check #%lu ===\r\n", cycle_counter / 5);
+        CDC_Transmit_FS((uint8_t*)usb_msg, strlen(usb_msg));
+        
+        Check_Network_Status();
+        
+        // 添加ping包接收链路调试
+        Debug_Packet_Reception_Chain();
+    }
+    
+    // 发送心跳消息
+    snprintf(usb_msg, sizeof(usb_msg), "Heartbeat #%lu - ping接收调试中...\r\n", cycle_counter);
+    CDC_Transmit_FS((uint8_t*)usb_msg, strlen(usb_msg));
+    
+    osDelay(2000); // 2秒间隔
   }
   /* USER CODE END 5 */
 }

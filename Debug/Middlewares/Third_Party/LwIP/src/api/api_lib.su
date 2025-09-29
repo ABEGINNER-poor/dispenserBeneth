@@ -26,3 +26,5 @@
 ../Middlewares/Third_Party/LwIP/src/api/api_lib.c:1125:1:netconn_close	16	static
 ../Middlewares/Third_Party/LwIP/src/api/api_lib.c:1139:1:netconn_err	24	static
 ../Middlewares/Third_Party/LwIP/src/api/api_lib.c:1163:1:netconn_shutdown	16	static
+../Middlewares/Third_Party/LwIP/src/api/api_lib.c:1181:1:netconn_join_leave_group	64	static
+../Middlewares/Third_Party/LwIP/src/api/api_lib.c:1223:1:netconn_join_leave_group_netif	64	static
