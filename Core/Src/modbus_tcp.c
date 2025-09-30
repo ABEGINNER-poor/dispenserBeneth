@@ -30,7 +30,7 @@ err_t modbus_tcp_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
 
     if (len < 12) return ERR_VAL; // 最小Modbus TCP帧长
 
-    uint16_t trans_id = (buf[0] << 8) | buf[1]; // 事务ID
+    uint16_t trans_id __attribute__((unused)) = (buf[0] << 8) | buf[1]; // 事务ID
     uint8_t fc = buf[7]; // 函数码
 
     uint8_t reply[1024];

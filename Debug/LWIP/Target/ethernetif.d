@@ -80,7 +80,6 @@ LWIP/Target/ethernetif.o: ../LWIP/Target/ethernetif.c ../Core/Inc/main.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/etharp.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/ip4.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip4.h \
- ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/etharp.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/ethip6.h \
  ../LWIP/Target/ethernetif.h \
  C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/Drivers/BSP/Components/yt8512c/yt8512c.h \
@@ -175,7 +174,6 @@ LWIP/Target/ethernetif.o: ../LWIP/Target/ethernetif.c ../Core/Inc/main.h \
 ../Middlewares/Third_Party/LwIP/src/include/lwip/etharp.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/ip4.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip4.h:
-../Middlewares/Third_Party/LwIP/src/include/lwip/prot/etharp.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/ethip6.h:
 ../LWIP/Target/ethernetif.h:
 C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/Drivers/BSP/Components/yt8512c/yt8512c.h:

@@ -43,22 +43,24 @@
 #define WITH_RTOS 1
 /* Temporary workaround to avoid conflict on errno defined in STM32CubeIDE and lwip sys_arch.c errno */
 #undef LWIP_PROVIDE_ERRNO
-/*----- CHECKSUM_BY_HARDWARE disabled -----*/
-#define CHECKSUM_BY_HARDWARE 0
+/*----- CHECKSUM_BY_HARDWARE enabled -----*/
+#define CHECKSUM_BY_HARDWARE 1
 /*-----------------------------------------------------------------------------*/
 
 /* LwIP Stack Parameters (modified compared to initialization value in opt.h) -*/
 /* Parameters set in STM32CubeMX LwIP Configuration GUI -*/
-/*----- Default Value for LWIP_IGMP: 0 ---*/
-#define LWIP_IGMP 1
 /*----- Value in opt.h for MEM_ALIGNMENT: 1 -----*/
 #define MEM_ALIGNMENT 4
+/*----- Default Value for MEM_SIZE: 1600 ---*/
+#define MEM_SIZE 4096
+/*----- Default Value for MEMP_NUM_PBUF: 16 ---*/
+#define MEMP_NUM_PBUF 32
+/*----- Default Value for PBUF_POOL_BUFSIZE: 592 ---*/
+#define PBUF_POOL_BUFSIZE 1600
+/*----- Default Value for LWIP_ARP: 1 ---*/
+#define LWIP_ARP 0
 /*----- Value in opt.h for LWIP_ETHERNET: LWIP_ARP || PPPOE_SUPPORT -*/
 #define LWIP_ETHERNET 1
-/*----- Default Value for LWIP_BROADCAST_PING: 0 ---*/
-#define LWIP_BROADCAST_PING 1
-/*----- Default Value for LWIP_MULTICAST_PING: 0 ---*/
-#define LWIP_MULTICAST_PING 1
 /*----- Value in opt.h for LWIP_DNS_SECURE: (LWIP_DNS_SECURE_RAND_XID | LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING | LWIP_DNS_SECURE_RAND_SRC_PORT) -*/
 #define LWIP_DNS_SECURE 7
 /*----- Value in opt.h for TCP_SND_QUEUELEN: (4*TCP_SND_BUF + (TCP_MSS - 1))/TCP_MSS -----*/
@@ -74,7 +76,7 @@
 /*----- Value in opt.h for TCPIP_THREAD_STACKSIZE: 0 -----*/
 #define TCPIP_THREAD_STACKSIZE 1024
 /*----- Value in opt.h for TCPIP_THREAD_PRIO: 1 -----*/
-#define TCPIP_THREAD_PRIO osPriorityNormal
+#define TCPIP_THREAD_PRIO 24
 /*----- Value in opt.h for TCPIP_MBOX_SIZE: 0 -----*/
 #define TCPIP_MBOX_SIZE 6
 /*----- Value in opt.h for SLIPIF_THREAD_STACKSIZE: 0 -----*/
@@ -101,6 +103,8 @@
 #define CHECKSUM_GEN_UDP 0
 /*----- Value in opt.h for CHECKSUM_GEN_TCP: 1 -----*/
 #define CHECKSUM_GEN_TCP 0
+/*----- Value in opt.h for CHECKSUM_GEN_ICMP: 1 -----*/
+#define CHECKSUM_GEN_ICMP 0
 /*----- Value in opt.h for CHECKSUM_GEN_ICMP6: 1 -----*/
 #define CHECKSUM_GEN_ICMP6 0
 /*----- Value in opt.h for CHECKSUM_CHECK_IP: 1 -----*/
@@ -109,20 +113,29 @@
 #define CHECKSUM_CHECK_UDP 0
 /*----- Value in opt.h for CHECKSUM_CHECK_TCP: 1 -----*/
 #define CHECKSUM_CHECK_TCP 0
+/*----- Value in opt.h for CHECKSUM_CHECK_ICMP: 1 -----*/
+#define CHECKSUM_CHECK_ICMP 0
 /*----- Value in opt.h for CHECKSUM_CHECK_ICMP6: 1 -----*/
 #define CHECKSUM_CHECK_ICMP6 0
 /*-----------------------------------------------------------------------------*/
 /* USER CODE BEGIN 1 */
 
 /* Fixed configurations for STM32F407 Ethernet */
-#define PBUF_POOL_SIZE 16
-#define PBUF_POOL_BUFSIZE 592
-#define MEM_SIZE (10*1024)
+#define MEM_SIZE (15*1024)
 
-/* Enable statistics for debugging */
+/* Use standard (non-zero-copy) mode for Ethernet */
+#define ETH_RX_BUFFER_CNT 4
+#define ETH_TX_BUFFER_CNT 4
+
+/* Disable statistics to avoid compilation issues */
 #undef LWIP_STATS
-#define LWIP_STATS 1
-#define LWIP_STATS_DISPLAY 1
+#define LWIP_STATS 0
+#define LWIP_STATS_DISPLAY 0
+#undef MEM_STATS
+#define MEM_STATS 0
+#undef MEMP_STATS 
+#define MEMP_STATS 0
+#define PBUF_STATS 0
 
 /* Ensure proper ETH alignment */
 #define ETH_PAD_SIZE 2

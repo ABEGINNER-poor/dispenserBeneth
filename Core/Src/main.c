@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
+  * @file : main.c
+  * @brief : Main program body
   ******************************************************************************
   * @attention
   *
@@ -24,11 +24,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdbool.h>
-#include <string.h>
-#include <stdio.h>
-#include "usbd_cdc_if.h"
-#include "lwip/netif.h"
+#include "yt8512c.h"
+#include "ethernetif.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,9 +51,14 @@ UART_HandleTypeDef huart6;
 
 SRAM_HandleTypeDef hsram3;
 
-osThreadId defaultTaskHandle;
+/* Definitions for defaultTask */
+osThreadId_t defaultTaskHandle;
+const osThreadAttr_t defaultTask_attributes = {
+  .name = "defaultTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* USER CODE BEGIN PV */
-
 
 /* USER CODE END PV */
 
@@ -67,14 +69,11 @@ static void MX_FSMC_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART6_UART_Init(void);
 static void MX_TIM7_Init(void);
-void StartDefaultTask(void const * argument);
+void StartDefaultTask(void *argument);
 
+static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
-void Check_Network_Status(void);
-void Debug_Packet_Reception_Chain(void);
-void Debug_LWIP_Protocol_Stack(void);
-void Debug_ARP_Table(void);
-void Debug_Network_Interface(void);
+static void clear_eth_dma_errors(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -115,9 +114,15 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART6_UART_Init();
   MX_TIM7_Init();
+
+  /* Initialize interrupts */
+  MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
+
+  /* Init scheduler */
+  osKernelInitialize();
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -136,13 +141,16 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 1024);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+  /* creation of defaultTask */
+  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
   osKernelStart();
@@ -182,10 +190,10 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 15;
-  RCC_OscInitStruct.PLL.PLLN = 144;
+  RCC_OscInitStruct.PLL.PLLM = 25;
+  RCC_OscInitStruct.PLL.PLLN = 336;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 5;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -200,10 +208,27 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief NVIC Configuration.
+  * @retval None
+  */
+static void MX_NVIC_Init(void)
+{
+  /* OTG_FS_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(OTG_FS_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+  /* ETH_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(ETH_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(ETH_IRQn);
+  /* TIM7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM7_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(TIM7_IRQn);
 }
 
 /**
@@ -342,10 +367,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
-  // PHY 复位
-      /*HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_RESET); // 拉低
-      HAL_Delay(20); // 延时 >10ms
-      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_SET);   // 拉高*/
+
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
@@ -405,137 +427,35 @@ static void MX_FSMC_Init(void)
 /* USER CODE BEGIN 4 */
 
 /**
- * @brief 检查网络状态
+ * @brief 清除ETH DMA错误状态
  */
-void Check_Network_Status(void)
+static void clear_eth_dma_errors(void)
 {
-    char msg[128];
     extern ETH_HandleTypeDef heth;
-    extern struct netif gnetif;
-    
-    // 1. 检查ETH初始化状态
-    snprintf(msg, sizeof(msg), "ETH gState: %d\r\n", heth.gState);
-    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    
-    // 2. 检查PHY链路状态
-    uint32_t phy_reg = 0;
-    if (HAL_ETH_ReadPHYRegister(&heth, 0x00, PHY_BSR, &phy_reg) == HAL_OK) {
-        bool link_up = (phy_reg & PHY_LINKED_STATUS) != 0;
-        snprintf(msg, sizeof(msg), "PHY BSR: 0x%04lX, Link: %s\r\n", 
-                 phy_reg & 0xFFFF, link_up ? "UP" : "DOWN");
-        CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    } else {
-        CDC_Transmit_FS((uint8_t*)"PHY Read Failed\r\n", 17);
-    }
-    
-    // 3. 检查LWIP netif状态
-    if (netif_is_up(&gnetif)) {
-        if (netif_is_link_up(&gnetif)) {
-            snprintf(msg, sizeof(msg), "LWIP: UP, IP: %d.%d.%d.%d\r\n",
-                     (int)((gnetif.ip_addr.addr >> 0) & 0xFF),
-                     (int)((gnetif.ip_addr.addr >> 8) & 0xFF),
-                     (int)((gnetif.ip_addr.addr >> 16) & 0xFF),
-                     (int)((gnetif.ip_addr.addr >> 24) & 0xFF));
-        } else {
-            snprintf(msg, sizeof(msg), "LWIP: Interface UP, but Link DOWN\r\n");
-        }
-    } else {
-        snprintf(msg, sizeof(msg), "LWIP: Interface DOWN\r\n");
-    }
-    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    
-    // 4. 检查DMA状态
-    uint32_t dma_status = ETH->DMASR;
-    snprintf(msg, sizeof(msg), "DMA Status: 0x%08lX\r\n", dma_status);
-    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    
-    CDC_Transmit_FS((uint8_t*)"--- Network Check Complete ---\r\n", 33);
-}
 
-/**
- * @brief 调试数据包接收链路 - 专门排查ping包为什么到不了ICMP层
- */
-void Debug_Packet_Reception_Chain(void)
-{
-    char msg[128];
-    extern ETH_HandleTypeDef heth;
-    extern struct netif gnetif;
-    
-    CDC_Transmit_FS((uint8_t*)"\r\n=== PING包接收链路调试 ===\r\n", 32);
-    
-    // 1. 检查ETH DMA接收状态
-    uint32_t dma_sr = ETH->DMASR;
-    snprintf(msg, sizeof(msg), "DMA Status: 0x%08lX\r\n", dma_sr);
-    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    
-    // 检查ETH是否启动
-    uint32_t maccr = ETH->MACCR;
-    snprintf(msg, sizeof(msg), "ETH MACCR: 0x%08lX\r\n", maccr);
-    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    
-    if (maccr & (1 << 2)) {  // RE - Receiver Enable
-        CDC_Transmit_FS((uint8_t*)"✅ ETH接收已启用\r\n", 21);
-    } else {
-        CDC_Transmit_FS((uint8_t*)"❌ ETH接收未启用！\r\n", 23);
-    }
-    
-    if (maccr & (1 << 3)) {  // TE - Transmitter Enable  
-        CDC_Transmit_FS((uint8_t*)"✅ ETH发送已启用\r\n", 21);
-    } else {
-        CDC_Transmit_FS((uint8_t*)"❌ ETH发送未启用！\r\n", 23);
-    }
-    
-    // 检查DMA接收相关位
-    if (dma_sr & (1 << 6)) {  // RI - Receive Interrupt
-        CDC_Transmit_FS((uint8_t*)"✅ DMA接收中断标志置位\r\n", 28);
-    } else {
-        CDC_Transmit_FS((uint8_t*)"❌ DMA接收中断标志未置位\r\n", 30);
-    }
-    
-    if (dma_sr & (1 << 7)) {  // RU - Receive Buffer Unavailable
-        CDC_Transmit_FS((uint8_t*)"⚠️ 接收缓冲区不可用\r\n", 24);
-    }
-    
-    // 2. 检查ETH MAC接收状态
-    uint32_t mac_sr = ETH->MACSR;
-    snprintf(msg, sizeof(msg), "MAC Status: 0x%08lX\r\n", mac_sr);
-    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    
-    // 3. 检查接收描述符状态 (跳过具体地址检查)
-    CDC_Transmit_FS((uint8_t*)"RX Desc: Configured\r\n", 21);
-    
-    // 4. 检查ETH错误状态
-    uint32_t eth_error = HAL_ETH_GetError(&heth);
-    if (eth_error != HAL_ETH_ERROR_NONE) {
-        snprintf(msg, sizeof(msg), "❌ ETH Error: 0x%08lX\r\n", eth_error);
-        CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    } else {
-        CDC_Transmit_FS((uint8_t*)"✅ ETH Error: None\r\n", 21);
-    }
-    
-    // 5. 检查网络接口基本信息
-    snprintf(msg, sizeof(msg), "LWIP netif name: %c%c\r\n", gnetif.name[0], gnetif.name[1]);
-    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    
-    snprintf(msg, sizeof(msg), "LWIP MTU: %u\r\n", gnetif.mtu);
-    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    
-    CDC_Transmit_FS((uint8_t*)"💡 建议: 在HAL_ETH_RxCpltCallback中加断点\r\n", 48);
-    CDC_Transmit_FS((uint8_t*)"💡 建议: 在ethernetif_input中加断点\r\n", 38);
-    
-    CDC_Transmit_FS((uint8_t*)"--- 接收链路调试完成 ---\r\n", 29);
+    // 读取当前DMA状态
+    uint32_t dma_status = ETH->DMASR;
+
+    // 清除所有DMA状态位
+    ETH->DMASR = 0xFFFFFFFF;
+
+    // 清除HAL ETH错误状态
+    heth.ErrorCode = HAL_ETH_ERROR_NONE;
+
+    // 重新启用DMA中断
+    ETH->DMAIER |= (ETH_DMAIER_NISE | ETH_DMAIER_RIE | ETH_DMAIER_TIE);
 }
 
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
+  * @brief Function implementing the defaultTask thread.
+  * @param argument: Not used
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void const * argument)
+void StartDefaultTask(void *argument)
 {
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
@@ -543,38 +463,26 @@ void StartDefaultTask(void const * argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
-  char usb_msg[128];
   uint32_t cycle_counter = 0;
-  uint32_t network_check_counter = 0;
 
   // 等待 USB 枚举就绪
   osDelay(2000);
-  
-  CDC_Transmit_FS((uint8_t*)"=== STM32 Network Test Started ===\r\n", 37);
+
+
 
   for(;;)
   {
-    cycle_counter++;
-    
-    // 每5个周期（10秒）执行一次网络状态检查
-    if (++network_check_counter >= 5) {
-        network_check_counter = 0;
-        
-        snprintf(usb_msg, sizeof(usb_msg), "\r\n=== Network Check #%lu ===\r\n", cycle_counter / 5);
-        CDC_Transmit_FS((uint8_t*)usb_msg, strlen(usb_msg));
-        
-        Check_Network_Status();
-        
-        // 添加ping包接收链路调试
-        Debug_Packet_Reception_Chain();
+	  	  cycle_counter++;
+
+	      // 添加 keepalive 调试信息
+	      char usb_msg[64];
+	      uint32_t current_time = HAL_GetTick() / 1000; // 将毫秒转换为秒
+	      snprintf(usb_msg, sizeof(usb_msg), "Keepalive #%lu @ %lu s\r\n", cycle_counter, current_time);
+	      CDC_Transmit_FS((uint8_t*)usb_msg, strlen(usb_msg));
+        osDelay(2000); // 2秒间隔
     }
-    
-    // 发送心跳消息
-    snprintf(usb_msg, sizeof(usb_msg), "Heartbeat #%lu - ping接收调试中...\r\n", cycle_counter);
-    CDC_Transmit_FS((uint8_t*)usb_msg, strlen(usb_msg));
-    
-    osDelay(2000); // 2秒间隔
-  }
+
+
   /* USER CODE END 5 */
 }
 

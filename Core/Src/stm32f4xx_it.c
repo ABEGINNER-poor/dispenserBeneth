@@ -22,6 +22,9 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <string.h>
+#include "usbd_cdc_if.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -196,26 +199,20 @@ void TIM7_IRQHandler(void)
 void ETH_IRQHandler(void)
 {
   /* USER CODE BEGIN ETH_IRQn 0 */
-
+  static uint32_t eth_irq_count = 0;
+  eth_irq_count++;
+  
+  // 每100次中断输出一次计数，避免太多日志
+  if (eth_irq_count % 100 == 1) {
+    char debug_msg[40];
+    snprintf(debug_msg, sizeof(debug_msg), "⚡ ETH中断 #%lu\r\n", eth_irq_count);
+    CDC_Transmit_FS((uint8_t*)debug_msg, strlen(debug_msg));
+  }
   /* USER CODE END ETH_IRQn 0 */
   HAL_ETH_IRQHandler(&heth);
   /* USER CODE BEGIN ETH_IRQn 1 */
 
   /* USER CODE END ETH_IRQn 1 */
-}
-
-/**
-  * @brief This function handles Ethernet wake-up interrupt through EXTI line 19.
-  */
-void ETH_WKUP_IRQHandler(void)
-{
-  /* USER CODE BEGIN ETH_WKUP_IRQn 0 */
-
-  /* USER CODE END ETH_WKUP_IRQn 0 */
-  HAL_ETH_IRQHandler(&heth);
-  /* USER CODE BEGIN ETH_WKUP_IRQn 1 */
-
-  /* USER CODE END ETH_WKUP_IRQn 1 */
 }
 
 /**

@@ -11,10 +11,36 @@
 
 
 /* PHY芯片寄存器映射表 */
-#define YT8512C_BCR                            ((uint16_t)0x0000U)
-#define YT8512C_BSR                            ((uint16_t)0x0001U)
-#define PHY_REGISTER2                           ((uint16_t)0x0002U)
-#define PHY_REGISTER3                           ((uint16_t)0x0003U)
+#define YT8512C_BCR                            ((uint16_t)0x0000U)                   /*!< Basic Control Register */
+#define YT8512C_BSR                            ((uint16_t)0x0001U)                   /*!< Basic Status Register */
+#define YT8512C_PHYID1                         ((uint16_t)0x0002U)                   /*!< PHY Identifier Register 1 */
+#define YT8512C_PHYID2                         ((uint16_t)0x0003U)                   /*!< PHY Identifier Register 2 */
+#define YT8512C_ANAR                           ((uint16_t)0x0004U)                   /*!< Auto-Negotiation Advertisement Register */
+#define YT8512C_ANLPAR                         ((uint16_t)0x0005U)                   /*!< Auto-Negotiation Link Partner Ability Register */
+#define YT8512C_ANER                           ((uint16_t)0x0006U)                   /*!< Auto-Negotiation Expansion Register */
+
+/* YT8512C Specific Registers */
+#define YT8512C_SMI_PHY                        ((uint16_t)0x0010U)                   /*!< SMI PHY Register */
+#define YT8512C_PHYSCSR                        ((uint16_t)0x0011U)                   /*!< PHY Specific Control/Status Register */
+#define YT8512C_INTERRUPT                      ((uint16_t)0x0012U)                   /*!< Interrupt Indicators Register */
+#define YT8512C_INTR_MASK                      ((uint16_t)0x0013U)                   /*!< Interrupt Mask Register */
+#define YT8512C_EXT_REG                        ((uint16_t)0x001EU)                   /*!< Extended Register */
+
+/* Expected PHY ID for YT8512C */
+#define YT8512C_PHY_ID                         ((uint32_t)0x0000011A)                /*!< YT8512C PHY ID */
+
+/* YT8512C PHYSCSR Register (0x11) Bit Definitions */
+#define YT8512C_PHYSCSR_SPEED_MODE_MASK ((uint16_t)0xC000)  /*!< Speed Mode mask (bit15:14) */
+#define YT8512C_PHYSCSR_SPEED_100M     ((uint16_t)0x4000)  /*!< Speed 100Mbps (01) */
+#define YT8512C_PHYSCSR_SPEED_10M      ((uint16_t)0x0000)  /*!< Speed 10Mbps (00) */
+#define YT8512C_PHYSCSR_DUPLEX_FULL    ((uint16_t)0x2000)  /*!< Full duplex (bit13=1) */
+#define YT8512C_PHYSCSR_RESOLVED       ((uint16_t)0x0800)  /*!< Speed/Duplex Resolved (bit11=1) */
+#define YT8512C_PHYSCSR_LINK_UP        ((uint16_t)0x0400)  /*!< Link up (bit10=1) */                  /*!< Link up indication */
+
+/* PHY Address */
+#define YT8512C_ADDR                           ((uint16_t)0x0000U)
+/* PHY Register Count */
+#define YT8512C_PHY_COUNT                      ((uint16_t)0x001FU)
 
 /* 操作SCR寄存器的值（一般不需要修改） */
 #define YT8512C_BCR_SOFT_RESET                 ((uint16_t)0x8000U)
@@ -62,49 +88,17 @@
 /* PHY寄存器的数量 */
 #define YT8512C_PHY_COUNT                      ((uint16_t)0x001FU)
 
-#define YT8512C_PHYSCSR                        ((uint16_t)0x11)                       /*!< tranceiver status register */
-#define YT8512C_SPEED_STATUS                   ((uint16_t)0x4010)                     /*!< configured information of speed: 100Mbit/s */
-#define YT8512C_DUPLEX_STATUS                  ((uint16_t)0x2000)                     /*!< configured information of duplex: full-duplex */
+/* Legacy definitions for compatibility - these should be updated */
+#define YT8512C_SPEED_STATUS                   YT8512C_PHYSCSR_SPEED_100M              /*!< Legacy: configured information of speed: 100Mbit/s */
+#define YT8512C_DUPLEX_STATUS                  YT8512C_PHYSCSR_DUPLEX_FULL             /*!< Legacy: configured information of duplex: full-duplex */
 
-/* 定义函数指针 */
-typedef int32_t  (*yt8512c_init_func)          (void);
-typedef int32_t  (*yt8512c_deinit_func)        (void);
-typedef int32_t  (*yt8512c_readreg_func)       (uint32_t, uint32_t, uint32_t *);
-typedef int32_t  (*yt8512c_writereg_func)      (uint32_t, uint32_t, uint32_t);
-typedef int32_t  (*yt8512c_gettick_func)       (void);
+/* RMII 配置示例 (EXT 4000h) */
+#define EXT_4000_RMII_EN               ((uint16_t)0x0002)  /*!< bit1=1 Enable RMII */
+#define EXT_4000_CLK_SEL               ((uint16_t)0x0001)  /*!< bit0=1 Input TXC/RXC */
 
-/* PHY共用函数结构体 */
-typedef struct
-{
-    yt8512c_init_func          init;                   /* 指向PHY初始化函数 */
-    yt8512c_deinit_func        deinit;                 /* 指向PHY反初始化函数 */
-    yt8512c_writereg_func      writereg;               /* 指向PHY写寄存器函数 */
-    yt8512c_readreg_func       readreg;                /* 指向PHY读寄存器函数 */
-    yt8512c_gettick_func       gettick;                /* 指向节拍函数 */
-} yt8512c_ioc_tx_t;
-
-/* 注册到组件对象结构体 */
-typedef struct
-{
-    uint32_t            devaddr;                        /* PHY地址 */
-    uint32_t            is_initialized;                 /* 描述该设备是否初始化 */
-    yt8512c_ioc_tx_t   io;                             /* 设备调用的函数入口 */
-    void                *pdata;                         /* 传入的形参 */
-}yt8512c_object_t;
-
-
-int32_t yt8512c_regster_bus_io(yt8512c_object_t *pobj, yt8512c_ioc_tx_t *ioctx);             /* 将IO函数注册到组件对象 */
-int32_t yt8512c_init(yt8512c_object_t *pobj);                                                 /* 初始化YT8512C并配置所需的硬件资源 */
-int32_t yt8512c_deinit(yt8512c_object_t *pobj);                                               /* 反初始化YT8512C及其硬件资源 */
-int32_t yt8512c_disable_power_down_mode(yt8512c_object_t *pobj);                              /* 关闭YT8512C的下电模式 */
-int32_t yt8512c_enable_power_down_mode(yt8512c_object_t *pobj);                               /* 使能YT8512C的下电模式 */
-int32_t yt8512c_start_auto_nego(yt8512c_object_t *pobj);                                      /* 启动自动协商过程 */
-int32_t yt8512c_get_link_state(yt8512c_object_t *pobj);                                       /* 获取YT8512C设备的链路状态 */
-int32_t yt8512c_set_link_state(yt8512c_object_t *pobj, uint32_t linkstate);                   /* 设置YT8512C设备的链路状态 */
-int32_t yt8512c_enable_loop_back_mode(yt8512c_object_t *pobj);                                /* 启用环回模式 */
-int32_t yt8512c_disable_loop_back_mode(yt8512c_object_t *pobj);                               /* 禁用环回模式 */
-
-
+/* 扩展寄存器访问 */
+#define YT8512C_DBG_AOR                ((uint16_t)0x001E)  /*!< Debug Address Offset Register */
+#define YT8512C_DBG_DR                 ((uint16_t)0x001F)  /*!< Debug Data Register */
 
 #ifdef __cplusplus
 }

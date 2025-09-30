@@ -133,19 +133,11 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth)
     
     /* Reset PHY */
     HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_RESET);
-    HAL_Delay(100);
     HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_SET);
     HAL_Delay(100);
 
     /* USER CODE BEGIN ETH_MspInit 1 */
-    /* ❗️❗️❗️ 关键修复：配置ETH中断到NVIC ❗️❗️❗️ */
-    /* ETH Interrupt NVIC Configuration */
-    HAL_NVIC_SetPriority(ETH_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(ETH_IRQn);
-    
-    /* ETH Wake-up interrupt NVIC Configuration */
-    HAL_NVIC_SetPriority(ETH_WKUP_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(ETH_WKUP_IRQn);
+
     /* USER CODE END ETH_MspInit 1 */
   }
 }
@@ -232,9 +224,6 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     /* USER CODE END TIM7_MspInit 0 */
     /* Peripheral clock enable */
     __HAL_RCC_TIM7_CLK_ENABLE();
-    /* TIM7 interrupt Init */
-    HAL_NVIC_SetPriority(TIM7_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(TIM7_IRQn);
     /* USER CODE BEGIN TIM7_MspInit 1 */
 
     /* USER CODE END TIM7_MspInit 1 */

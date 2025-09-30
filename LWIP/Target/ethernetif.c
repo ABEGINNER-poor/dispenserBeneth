@@ -28,7 +28,10 @@
 #include "ethernetif.h"
 /* USER CODE BEGIN Include for User BSP */
 #include "yt8512c.h"
+#include "stm32f4xx_hal_eth.h"
 #include "usbd_cdc_if.h"
+#include <stdio.h>
+#include <stddef.h> /* for offsetof */
 /* USER CODE END Include for User BSP */
 #include <string.h>
 #include "cmsis_os.h"
@@ -36,68 +39,205 @@
 
 /* Within 'USER CODE' section, code will be kept by default at each generation */
 /* USER CODE BEGIN 0 */
-extern ETH_HandleTypeDef heth;  // 声明heth以解决undeclared错误
 
-/* 调试输出开关 - 设为0以减少调试信息 */
-#define ETHERNETIF_DEBUG_ENABLED 0
+/* YT8512C PHY 相关函数 */
 
-/* YT8512C PHY IO函数声明 */
-static int32_t YT8512C_ReadReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t *pData);
-static int32_t YT8512C_WriteReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t Data);
-static int32_t YT8512C_GetTick(void);
-static int32_t YT8512C_Init(void);
-static int32_t YT8512C_DeInit(void);
+/**
+ * @brief YT8512C PHY 软复位
+ * @param heth: ETH 句柄指针
+ * @retval YT8512C 状态
+ */
+static int32_t YT8512C_SoftReset(ETH_HandleTypeDef *heth)
+{
+    uint32_t tickstart = 0;
+    uint32_t regvalue = 0;
 
-/* YT8512C PHY 对象和IO函数 */
-yt8512c_object_t yt8512c;
-yt8512c_ioc_tx_t yt8512c_ioctx = {YT8512C_Init, YT8512C_DeInit, YT8512C_WriteReg, YT8512C_ReadReg, YT8512C_GetTick};
+    /* 发送软复位命令 */
+    if (HAL_ETH_WritePHYRegister(heth, YT8512C_ADDR, YT8512C_BCR, YT8512C_BCR_SOFT_RESET) != HAL_OK)
+    {
+        return YT8512C_STATUS_WRITE_ERROR;
+    }
 
-/* PHY诊断函数：扫描所有可能的PHY地址 */
-void PHY_Scan_All_Addresses(void) {
-    char debug_msg[64];
-    uint32_t reg_val = 0;
-    
-    CDC_Transmit_FS((uint8_t *)"=== PHY Address Scan ===\r\n", 27);
-    
-    for (uint32_t addr = 0; addr <= 31; addr++) {
-        if (HAL_ETH_ReadPHYRegister(&heth, addr, 0x02, &reg_val) == HAL_OK) {
-            if (reg_val != 0x0000 && reg_val != 0xFFFF) {
-                snprintf(debug_msg, sizeof(debug_msg), "PHY Found at 0x%02lX, ID1: 0x%04lX\r\n", 
-                        addr, reg_val & 0xFFFF);
-                CDC_Transmit_FS((uint8_t *)debug_msg, strlen(debug_msg));
-                
-                // 读取ID2寄存器
-                if (HAL_ETH_ReadPHYRegister(&heth, addr, 0x03, &reg_val) == HAL_OK) {
-                    snprintf(debug_msg, sizeof(debug_msg), "  ID2: 0x%04lX\r\n", reg_val & 0xFFFF);
-                    CDC_Transmit_FS((uint8_t *)debug_msg, strlen(debug_msg));
-                }
-            }
+    /* 等待复位完成 */
+    tickstart = HAL_GetTick();
+    do {
+        if (HAL_ETH_ReadPHYRegister(heth, YT8512C_ADDR, YT8512C_BCR, &regvalue) != HAL_OK)
+        {
+            return YT8512C_STATUS_READ_ERROR;
         }
-        HAL_Delay(10); // 小延迟避免过快访问
+
+        /* 检查超时 */
+        if ((HAL_GetTick() - tickstart) >= 1000U)
+        {
+            return YT8512C_STATUS_RESET_TIMEOUT;
+        }
+    } while (regvalue & YT8512C_BCR_SOFT_RESET);
+
+    return YT8512C_STATUS_OK;
+}
+
+/**
+ * @brief YT8512C PHY 初始化
+ * @param heth: ETH 句柄指针
+ * @retval YT8512C 状态
+ */
+int32_t YT8512C_Init(ETH_HandleTypeDef *heth)
+{
+    int32_t ret = YT8512C_STATUS_OK;
+    uint32_t regvalue = 0;
+
+    /* 软复位 PHY */
+    ret = YT8512C_SoftReset(heth);
+    if (ret != YT8512C_STATUS_OK)
+    {
+        return ret;
     }
-    CDC_Transmit_FS((uint8_t *)"=== Scan Complete ===\r\n", 24);
-}
-static int32_t YT8512C_ReadReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t *pData) {
-    if (HAL_ETH_ReadPHYRegister(&heth, DevAddr, RegAddr, pData) == HAL_OK) {
-        // 调试输出(可选)
-        #ifdef DEBUG_PHY_REG
-        char buffer[32];
-        snprintf(buffer, sizeof(buffer), "Read Reg 0x%02X: 0x%04X\r\n", RegAddr, *pData & 0xFFFF);
-        CDC_Transmit_FS((uint8_t *)buffer, strlen(buffer));
-        #endif
-        return YT8512C_STATUS_OK;
+
+    /* 配置自动协商 */
+    regvalue = YT8512C_BCR_AUTONEGO_EN | YT8512C_BCR_RESTART_AUTONEGO;
+    if (HAL_ETH_WritePHYRegister(heth, YT8512C_ADDR, YT8512C_BCR, regvalue) != HAL_OK)
+    {
+        return YT8512C_STATUS_WRITE_ERROR;
     }
-    CDC_Transmit_FS((uint8_t *)"Read Error\r\n", 11);
-    return YT8512C_STATUS_READ_ERROR;
+
+    /* 延时等待 PHY 稳定 */
+    HAL_Delay(100);
+
+    return YT8512C_STATUS_OK;
 }
-static int32_t YT8512C_WriteReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t Data) {
-  return (HAL_ETH_WritePHYRegister(&heth, DevAddr, RegAddr, Data) == HAL_OK) ? YT8512C_STATUS_OK : YT8512C_STATUS_WRITE_ERROR;
+
+/**
+ * @brief 获取 YT8512C PHY 链路状态 (增强错误处理)
+ * @param heth: ETH 句柄指针
+ * @retval YT8512C 状态
+ */
+int32_t YT8512C_GetLinkState(ETH_HandleTypeDef *heth)
+{
+    uint32_t regvalue = 0;
+    uint32_t retry_count = 0;
+    const uint32_t max_retries = 3;
+    HAL_StatusTypeDef hal_status;
+
+    /* 读取基本状态寄存器 - 带重试机制 */
+    do {
+        hal_status = HAL_ETH_ReadPHYRegister(heth, YT8512C_ADDR, YT8512C_BSR, &regvalue);
+        if (hal_status == HAL_OK) {
+            break;
+        }
+
+        retry_count++;
+        if (retry_count < max_retries) {
+            HAL_Delay(10); // 短暂延时后重试
+        }
+    } while (retry_count < max_retries);
+
+    if (hal_status != HAL_OK)
+    {
+        return YT8512C_STATUS_READ_ERROR;
+    }
+
+    /* 检查链路状态 */
+    if ((regvalue & YT8512C_BSR_LINK_STATUS) == 0)
+    {
+        return YT8512C_STATUS_LINK_DOWN;
+    }
+
+    /* 检查自动协商是否完成 */
+    if ((regvalue & YT8512C_BSR_AUTONEGO_CPLT) == 0)
+    {
+        return YT8512C_STATUS_AUTONEGO_NOTDONE;
+    }
+
+    /* 读取速度和双工状态 - 带重试机制 */
+    retry_count = 0;
+    do {
+        hal_status = HAL_ETH_ReadPHYRegister(heth, YT8512C_ADDR, YT8512C_PHYSCSR, &regvalue);
+        if (hal_status == HAL_OK) {
+            break;
+        }
+
+        retry_count++;
+        if (retry_count < max_retries) {
+            HAL_Delay(10); // 短暂延时后重试
+        }
+    } while (retry_count < max_retries);
+
+    if (hal_status != HAL_OK)
+    {
+        return YT8512C_STATUS_READ_ERROR;
+    }
+
+    /* 解析速度和双工模式 - 使用更准确的位检测 */
+    /* 检查速度 (bit 4 = 1 表示100M, bit 4 = 0 表示10M) */
+    if ((regvalue & YT8512C_PHYSCSR_SPEED_100M) != 0)
+    {
+        /* 100Mbps - 检查双工模式 (bit 13 = 1 表示全双工) */
+        if ((regvalue & YT8512C_PHYSCSR_DUPLEX_FULL) != 0)
+        {
+            return YT8512C_STATUS_100MBITS_FULLDUPLEX;
+        }
+        else
+        {
+            return YT8512C_STATUS_100MBITS_HALFDUPLEX;
+        }
+    }
+    else
+    {
+        /* 10Mbps - 检查双工模式 */
+        if ((regvalue & YT8512C_PHYSCSR_DUPLEX_FULL) != 0)
+        {
+            return YT8512C_STATUS_10MBITS_FULLDUPLEX;
+        }
+        else
+        {
+            return YT8512C_STATUS_10MBITS_HALFDUPLEX;
+        }
+    }
 }
-static int32_t YT8512C_GetTick(void) {  // 包装以解决类型警告
-  return (int32_t)HAL_GetTick();
+
+/**
+ * @brief 设置 YT8512C PHY 链路状态 (当前未使用)
+ * @param heth: ETH 句柄指针
+ * @param LinkState: 链路状态
+ * @retval YT8512C 状态
+ */
+__attribute__((unused))
+static int32_t YT8512C_SetLinkState(ETH_HandleTypeDef *heth, uint32_t LinkState)
+{
+    uint32_t bcrvalue = 0;
+    int32_t ret = YT8512C_STATUS_OK;
+
+    switch (LinkState)
+    {
+        case YT8512C_STATUS_100MBITS_FULLDUPLEX:
+            bcrvalue = YT8512C_BCR_SPEED_SELECT | YT8512C_BCR_DUPLEX_MODE;
+            break;
+        case YT8512C_STATUS_100MBITS_HALFDUPLEX:
+            bcrvalue = YT8512C_BCR_SPEED_SELECT;
+            break;
+        case YT8512C_STATUS_10MBITS_FULLDUPLEX:
+            bcrvalue = YT8512C_BCR_DUPLEX_MODE;
+            break;
+        case YT8512C_STATUS_10MBITS_HALFDUPLEX:
+            bcrvalue = 0;
+            break;
+        default:
+            ret = YT8512C_STATUS_ERROR;
+            break;
+    }
+
+    if (ret == YT8512C_STATUS_OK)
+    {
+        /* 禁用自动协商并设置链路状态 */
+        if (HAL_ETH_WritePHYRegister(heth, YT8512C_ADDR, YT8512C_BCR, bcrvalue) != HAL_OK)
+        {
+            ret = YT8512C_STATUS_WRITE_ERROR;
+        }
+    }
+
+    return ret;
 }
-static int32_t YT8512C_Init(void) { return YT8512C_STATUS_OK; }  // 可空实现，HAL已处理
-static int32_t YT8512C_DeInit(void) { return YT8512C_STATUS_OK; }  // 可空实现
+
 /* USER CODE END 0 */
 
 /* Private define ------------------------------------------------------------*/
@@ -168,6 +308,12 @@ ETH_DMADescTypeDef  DMARxDscrTab[ETH_RX_DESC_CNT]; /* Ethernet Rx DMA Descriptor
 ETH_DMADescTypeDef  DMATxDscrTab[ETH_TX_DESC_CNT]; /* Ethernet Tx DMA Descriptors */
 
 /* USER CODE BEGIN 2 */
+/* Static buffers for traditional ETH mode - compatible with new HAL API */
+#define ETH_RX_BUF_SIZE_STATIC 1524 /* 1518 + 4 (VLAN) + 2 (alignment) */
+#define ETH_TX_BUF_SIZE_STATIC 1524
+
+static uint8_t Rx_Buff[ETH_RX_DESC_CNT][ETH_RX_BUF_SIZE_STATIC] __ALIGNED(32); /* Ethernet Receive Buffer */
+static uint8_t Tx_Buff[ETH_TX_DESC_CNT][ETH_TX_BUF_SIZE_STATIC] __ALIGNED(32); /* Ethernet Transmit Buffer */
 
 /* USER CODE END 2 */
 
@@ -179,7 +325,6 @@ ETH_HandleTypeDef heth;
 ETH_TxPacketConfig TxConfig;
 
 /* Private function prototypes -----------------------------------------------*/
-static void ethernetif_input(void const * argument);
 /* USER CODE BEGIN Private function prototypes for User BSP */
 
 /* USER CODE END Private function prototypes for User BSP */
@@ -239,6 +384,9 @@ void HAL_ETH_ErrorCallback(ETH_HandleTypeDef *handlerEth)
 static void low_level_init(struct netif *netif)
 {
   HAL_StatusTypeDef hal_eth_init_status = HAL_OK;
+/* USER CODE BEGIN OS_THREAD_ATTR_CMSIS_RTOS_V2 */
+  osThreadAttr_t attributes;
+/* USER CODE END OS_THREAD_ATTR_CMSIS_RTOS_V2 */
 /* USER CODE BEGIN low_level_init Variables Initialization for User BSP */
 
 /* USER CODE END low_level_init Variables Initialization for User BSP */
@@ -259,7 +407,7 @@ static void low_level_init(struct netif *netif)
   heth.Init.RxBuffLen = 1536;
 
   /* USER CODE BEGIN MACADDRESS */
-  
+
   /* USER CODE END MACADDRESS */
 
   hal_eth_init_status = HAL_ETH_Init(&heth);
@@ -293,28 +441,25 @@ static void low_level_init(struct netif *netif)
   /* Accept broadcast address and ARP traffic */
   /* don't set NETIF_FLAG_ETHARP if this device is not an ethernet one */
   #if LWIP_ARP
-    netif->flags |= NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_IGMP;
+    netif->flags |= NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP;
   #else
-    netif->flags |= NETIF_FLAG_BROADCAST | NETIF_FLAG_IGMP;
+    netif->flags |= NETIF_FLAG_BROADCAST;
   #endif /* LWIP_ARP */
 
   /* create a binary semaphore used for informing ethernetif of frame reception */
-  osSemaphoreDef(RxSem);
-  RxPktSemaphore = osSemaphoreCreate(osSemaphore(RxSem), 1);
+  RxPktSemaphore = osSemaphoreNew(1, 0, NULL);
 
   /* create a binary semaphore used for informing ethernetif of frame transmission */
-  osSemaphoreDef(TxSem);
-  TxPktSemaphore = osSemaphoreCreate(osSemaphore(TxSem), 1);
-
-  /* Decrease the semaphore's initial count from 1 to 0 */
-  osSemaphoreWait(RxPktSemaphore, 0);
-  osSemaphoreWait(TxPktSemaphore, 0);
+  TxPktSemaphore = osSemaphoreNew(1, 0, NULL);
 
   /* create the task that handles the ETH_MAC */
-/* USER CODE BEGIN OS_THREAD_DEF_CREATE_CMSIS_RTOS_V1 */
-  osThreadDef(EthIf, ethernetif_input, osPriorityRealtime, 0, INTERFACE_THREAD_STACK_SIZE);
-  osThreadCreate (osThread(EthIf), netif);
-/* USER CODE END OS_THREAD_DEF_CREATE_CMSIS_RTOS_V1 */
+/* USER CODE BEGIN OS_THREAD_NEW_CMSIS_RTOS_V2 */
+  memset(&attributes, 0x0, sizeof(osThreadAttr_t));
+  attributes.name = "EthIf";
+  attributes.stack_size = INTERFACE_THREAD_STACK_SIZE;
+  attributes.priority = osPriorityRealtime;
+  osThreadNew(ethernetif_input, netif, &attributes);
+/* USER CODE END OS_THREAD_NEW_CMSIS_RTOS_V2 */
 
 /* USER CODE BEGIN low_level_init Code 1 for User BSP */
 
@@ -323,94 +468,28 @@ static void low_level_init(struct netif *netif)
   if (hal_eth_init_status == HAL_OK)
   {
 /* USER CODE BEGIN low_level_init Code 2 for User BSP */
-    // ❗️❗️❗️ 关键修复：初始化YT8512C PHY ❗️❗️❗️
-    CDC_Transmit_FS((uint8_t*)"🔧 开始初始化YT8512C PHY...\r\n", 32);
-    
-    // 设置YT8512C对象的IO接口
-    yt8512c.io.init = yt8512c_ioctx.init;
-    yt8512c.io.deinit = yt8512c_ioctx.deinit;
-    yt8512c.io.readreg = yt8512c_ioctx.readreg;
-    yt8512c.io.writereg = yt8512c_ioctx.writereg;
-    yt8512c.io.gettick = yt8512c_ioctx.gettick;
-    
-    // 注册YT8512C对象到ETH句柄
-    if (yt8512c_regster_bus_io(&yt8512c, &yt8512c_ioctx) != YT8512C_STATUS_OK) {
-        CDC_Transmit_FS((uint8_t*)"❌ YT8512C注册IO失败\r\n", 24);
+    /* 使用新版HAL API，需要设置必要的回调函数 */
+
+    // 设置接收缓冲区分配回调函数 - 这是新版HAL API必需的
+    heth.rxAllocateCallback = HAL_ETH_RxAllocateCallback;
+    heth.rxLinkCallback = HAL_ETH_RxLinkCallback;
+    heth.txFreeCallback = NULL; // 发送不需要特殊处理
+    __HAL_ETH_DMA_ENABLE_IT(&heth, ETH_DMA_IT_NIS | ETH_DMA_IT_R);
+    /* 启动ETH中断模式 */
+    HAL_ETH_Start_IT(&heth);
+
+    /* 初始化 YT8512C PHY */
+    int32_t phy_status = YT8512C_Init(&heth);
+    HAL_ETH_WritePHYRegister(&heth, YT8512C_ADDR, YT8512C_DBG_AOR, 0x4000);  // 扩展寄存器偏移
+    HAL_ETH_WritePHYRegister(&heth, YT8512C_ADDR, YT8512C_DBG_DR, 0x0003);    // RMII 启用 (bit1=1, bit0=1)
+    if (phy_status != YT8512C_STATUS_OK)
+    {
         Error_Handler();
     }
-    
-    // PHY地址通常是0或1，尝试自动检测
-    uint32_t phyaddr = 0;
-    for (uint32_t addr = 0; addr <= 31; addr++) {
-        uint32_t id;
-        if (HAL_ETH_ReadPHYRegister(&heth, addr, 0x02, &id) == HAL_OK && id != 0xFFFF && id != 0x0000) {
-            phyaddr = addr;
-            char msg[60];
-            sprintf(msg, "✅ 检测到PHY地址: %lu, ID: 0x%04lX\r\n", addr, id);
-            CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-            break;
-        }
-    }
-    
-    // 设置PHY地址到对象中(可能需要手动设置)
-    // 这里简化处理，直接使用检测到的地址
-    
-    // 初始化YT8512C PHY (根据头文件只需要一个参数)
-    int32_t init_result = yt8512c_init(&yt8512c);
-    if (init_result != YT8512C_STATUS_OK) {
-        char msg[60];
-        sprintf(msg, "❌ YT8512C初始化失败: %ld\r\n", init_result);
-        CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-        Error_Handler();
-    }
-    
-    CDC_Transmit_FS((uint8_t*)"✅ YT8512C PHY初始化成功\r\n", 29);
-    
-    // 启动自动协商
-    if (yt8512c_start_auto_nego(&yt8512c) == YT8512C_STATUS_OK) {
-        CDC_Transmit_FS((uint8_t*)"🔄 自动协商已启动\r\n", 22);
-    }
-    
-    // 延时让PHY稳定
-    HAL_Delay(100);
-    
-    // 检查PHY链路状态
-    int32_t link_status = yt8512c_get_link_state(&yt8512c);
-    if (link_status >= 0) {
-        char msg[80];
-        if (link_status == YT8512C_STATUS_LINK_DOWN) {
-            sprintf(msg, "🔗 PHY链路状态: 断开 (状态=%ld)\r\n", link_status);
-        } else {
-            // 根据状态值判断连接状态和速度
-            const char* speed_duplex = "未知";
-            switch (link_status) {
-                case YT8512C_STATUS_100MBITS_FULLDUPLEX:
-                    speed_duplex = "100Mbps 全双工";
-                    break;
-                case YT8512C_STATUS_100MBITS_HALFDUPLEX:
-                    speed_duplex = "100Mbps 半双工";
-                    break;
-                case YT8512C_STATUS_10MBITS_FULLDUPLEX:
-                    speed_duplex = "10Mbps 全双工";
-                    break;
-                case YT8512C_STATUS_10MBITS_HALFDUPLEX:
-                    speed_duplex = "10Mbps 半双工";
-                    break;
-                case YT8512C_STATUS_AUTONEGO_NOTDONE:
-                    speed_duplex = "自动协商进行中";
-                    break;
-                default:
-                    speed_duplex = "未知状态";
-                    break;
-            }
-            sprintf(msg, "🔗 PHY链路状态: %s (状态=%ld)\r\n", speed_duplex, link_status);
-        }
-        CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    } else {
-        char msg[60];
-        sprintf(msg, "❌ 读取PHY链路状态失败: %ld\r\n", link_status);
-        CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    }
+
+    /* 等待 PHY 链路建立 */
+    HAL_Delay(1000);
+
 /* USER CODE END low_level_init Code 2 for User BSP */
 
   }
@@ -421,22 +500,6 @@ static void low_level_init(struct netif *netif)
 #endif /* LWIP_ARP || LWIP_ETHERNET */
 
 /* USER CODE BEGIN LOW_LEVEL_INIT */
-  
-  /* ❗️❗️❗️ 关键修复 - 启动ETH接收中断 ❗️❗️❗️ */
-  HAL_StatusTypeDef status = HAL_ETH_Start_IT(&heth);
-  if (status != HAL_OK) {
-    char msg[50];
-    snprintf(msg, sizeof(msg), "❌ ETH_Start_IT失败: %d\r\n", status);
-    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
-    Error_Handler();
-  } else {
-    CDC_Transmit_FS((uint8_t*)"✅ ETH接收中断已启动\r\n", 24);
-  }
-  
-  /* 启用必要的ETH DMA中断：接收、发送、正常中断摘要 */
-  __HAL_ETH_DMA_ENABLE_IT(&heth, ETH_DMA_IT_NIS | ETH_DMA_IT_R | ETH_DMA_IT_T);
-  
-  CDC_Transmit_FS((uint8_t*)"✅ ETH DMA接收和发送中断已启用\r\n", 35);
 
 /* USER CODE END LOW_LEVEL_INIT */
 }
@@ -505,7 +568,7 @@ static err_t low_level_output(struct netif *netif, struct pbuf *p)
       if(HAL_ETH_GetError(&heth) & HAL_ETH_ERROR_BUSY)
       {
         /* Wait for descriptors to become available */
-        osSemaphoreWait(TxPktSemaphore, ETHIF_TX_TIMEOUT);
+        osSemaphoreAcquire(TxPktSemaphore, ETHIF_TX_TIMEOUT);
         HAL_ETH_ReleaseTxPacket(&heth);
         errval = ERR_BUF;
       }
@@ -550,14 +613,14 @@ static struct pbuf * low_level_input(struct netif *netif)
  *
  * @param netif the lwip network interface structure for this ethernetif
  */
-static void ethernetif_input(void const * argument)
+void ethernetif_input(void* argument)
 {
   struct pbuf *p = NULL;
   struct netif *netif = (struct netif *) argument;
 
   for( ;; )
   {
-    if (osSemaphoreWait(RxPktSemaphore, TIME_WAITING_FOR_INPUT) == osOK)
+    if (osSemaphoreAcquire(RxPktSemaphore, TIME_WAITING_FOR_INPUT) == osOK)
     {
       do
       {
@@ -676,9 +739,9 @@ void pbuf_free_custom(struct pbuf *p)
 /* USER CODE BEGIN 6 */
 
 /**
-* @brief  Returns the current time in milliseconds
-*         when LWIP_TIMERS == 1 and NO_SYS == 1
-* @param  None
+* @brief Returns the current time in milliseconds
+* when LWIP_TIMERS == 1 and NO_SYS == 1
+* @param None
 * @retval Current Time value
 */
 u32_t sys_now(void)
@@ -696,43 +759,96 @@ u32_t sys_now(void)
   * @brief  Check the ETH link state then update ETH driver and netif link accordingly.
   * @retval None
   */
-
-void ethernet_link_thread(void const * argument)
+void ethernet_link_thread(void* argument)
 {
 
 /* USER CODE BEGIN ETH link init */
-
+    extern struct netif gnetif;
+    int32_t phy_link_state = YT8512C_STATUS_LINK_DOWN;
+    int32_t prev_link_state = YT8512C_STATUS_LINK_DOWN;
+    uint32_t error_count = 0;
+    uint32_t consecutive_errors = 0;
+    const uint32_t max_consecutive_errors = 10;
 /* USER CODE END ETH link init */
 
   for(;;)
   {
 
 /* USER CODE BEGIN ETH link Thread core code for User BSP */
-    struct netif *netif = (struct netif *) argument;
-    
-    /* 简化的PHY状态检测 - 使用标准HAL函数 */
-    uint32_t regval = 0;
-    
-    /* 读取PHY基本状态寄存器(BSR, Register 1) */
-    if (HAL_ETH_ReadPHYRegister(&heth, 0x00, PHY_BSR, &regval) == HAL_OK) {
-        /* 检查Link Status bit (bit 2) */
-        if (regval & PHY_LINKED_STATUS) {
-            /* Link is up */
-            if (!netif_is_link_up(netif)) {
-                netif_set_link_up(netif);
+        /* 获取 YT8512C PHY 链路状态 */
+        phy_link_state = YT8512C_GetLinkState(&heth);
+
+        /* 处理PHY通信错误 */
+        if (phy_link_state == YT8512C_STATUS_READ_ERROR)
+        {
+            error_count++;
+            consecutive_errors++;
+
+            /* 如果连续错误过多，尝试重新初始化PHY */
+            if (consecutive_errors >= max_consecutive_errors)
+            {
+                /* 重新初始化PHY */
+                int32_t init_result = YT8512C_Init(&heth);
+                if (init_result == YT8512C_STATUS_OK)
+                {
+                    consecutive_errors = 0;
+                    prev_link_state = YT8512C_STATUS_LINK_DOWN; // 强制状态检查
+                }
+                else
+                {
+                    consecutive_errors = max_consecutive_errors / 2; // 减少连续错误计数，避免无限重试
+                }
             }
-        } else {
-            /* Link is down */
-            if (netif_is_link_up(netif)) {
-                netif_set_link_down(netif);
+
+            /* 跳过本次状态更新 */
+            osDelay(500); // 延长等待时间
+            continue;
+        }
+
+        /* 成功读取PHY状态，重置连续错误计数 */
+        consecutive_errors = 0;
+
+        /* 检查链路状态是否发生变化 */
+        if (phy_link_state != prev_link_state)
+        {
+            switch (phy_link_state)
+            {
+                case YT8512C_STATUS_100MBITS_FULLDUPLEX:
+                case YT8512C_STATUS_100MBITS_HALFDUPLEX:
+                case YT8512C_STATUS_10MBITS_FULLDUPLEX:
+                case YT8512C_STATUS_10MBITS_HALFDUPLEX:
+                    /* 链路已建立 */
+                    if (prev_link_state == YT8512C_STATUS_LINK_DOWN ||
+                        prev_link_state == YT8512C_STATUS_AUTONEGO_NOTDONE)
+                    {
+                        /* 启动以太网 */
+                        HAL_ETH_Start_IT(&heth);
+                        netif_set_link_up(&gnetif);
+                        netif_set_up(&gnetif);
+                    }
+                    break;
+
+                case YT8512C_STATUS_LINK_DOWN:
+                    /* 链路断开 */
+                    if (prev_link_state != YT8512C_STATUS_LINK_DOWN)
+                    {
+                        HAL_ETH_Stop_IT(&heth);
+                        netif_set_link_down(&gnetif);
+                        netif_set_down(&gnetif);
+                    }
+                    break;
+
+                case YT8512C_STATUS_AUTONEGO_NOTDONE:
+                    /* 自动协商进行中，继续等待 */
+                    break;
+
+                default:
+                    /* 其他状态或错误 */
+                    break;
             }
+
+            prev_link_state = phy_link_state;
         }
-    } else {
-        /* PHY read failed - assume link down */
-        if (netif_is_link_up(netif)) {
-            netif_set_link_down(netif);
-        }
-    }
 /* USER CODE END ETH link Thread core code for User BSP */
 
     osDelay(100);
@@ -742,28 +858,36 @@ void ethernet_link_thread(void const * argument)
 void HAL_ETH_RxAllocateCallback(uint8_t **buff)
 {
 /* USER CODE BEGIN HAL ETH RxAllocateCallback */
+  // 进入临界区保护内存池分配
+  taskENTER_CRITICAL();
+
   struct pbuf_custom *p = LWIP_MEMPOOL_ALLOC(RX_POOL);
-  if (p)
-  {
-    /* Get the buff from the struct pbuf address. */
-    *buff = (uint8_t *)p + offsetof(RxBuff_t, buff);
-    p->custom_free_function = pbuf_free_custom;
-    /* Initialize the struct pbuf.
-    * This must be performed whenever a buffer's allocated because it may be
-    * changed by lwIP or the app, e.g., pbuf_free decrements ref. */
-    pbuf_alloced_custom(PBUF_RAW, 0, PBUF_REF, p, *buff, ETH_RX_BUF_SIZE);
-  }
-  else
-  {
-    RxAllocStatus = RX_ALLOC_ERROR;
-    *buff = NULL;
-  }
+    if (p)
+    {
+      /* Get the buff from the struct pbuf address. */
+      *buff = (uint8_t *)p + offsetof(RxBuff_t, buff);
+      p->custom_free_function = pbuf_free_custom;
+      /* Initialize the struct pbuf.
+      * This must be performed whenever a buffer's allocated because it may be
+      * changed by lwIP or the app, e.g., pbuf_free decrements ref. */
+      pbuf_alloced_custom(PBUF_RAW, 0, PBUF_REF, p, *buff, ETH_RX_BUF_SIZE);
+    }
+    else
+    {
+      RxAllocStatus = RX_ALLOC_ERROR;
+      *buff = NULL;
+    }
+
+  // 退出临界区
+  taskEXIT_CRITICAL();
 /* USER CODE END HAL ETH RxAllocateCallback */
 }
 
 void HAL_ETH_RxLinkCallback(void **pStart, void **pEnd, uint8_t *buff, uint16_t Length)
 {
 /* USER CODE BEGIN HAL ETH RxLinkCallback */
+  // 进入临界区保护pbuf链表操作
+  taskENTER_CRITICAL();
 
   struct pbuf **ppStart = (struct pbuf **)pStart;
   struct pbuf **ppEnd = (struct pbuf **)pEnd;
@@ -786,7 +910,7 @@ void HAL_ETH_RxLinkCallback(void **pStart, void **pEnd, uint8_t *buff, uint16_t 
     /* Chain the buffer to the end of the packet. */
     (*ppEnd)->next = p;
   }
-  *ppEnd  = p;
+  *ppEnd = p;
 
   /* Update the total length of all the buffers of the chain. Each pbuf in the chain should have its tot_len
    * set to its own length, plus the length of all the following pbufs in the chain. */
@@ -795,15 +919,21 @@ void HAL_ETH_RxLinkCallback(void **pStart, void **pEnd, uint8_t *buff, uint16_t 
     p->tot_len += Length;
   }
 
+  // 退出临界区
+  taskEXIT_CRITICAL();
 /* USER CODE END HAL ETH RxLinkCallback */
 }
 
 void HAL_ETH_TxFreeCallback(uint32_t * buff)
 {
 /* USER CODE BEGIN HAL ETH TxFreeCallback */
+  // 进入临界区保护pbuf释放操作
+  taskENTER_CRITICAL();
 
   pbuf_free((struct pbuf *)buff);
 
+  // 退出临界区
+  taskEXIT_CRITICAL();
 /* USER CODE END HAL ETH TxFreeCallback */
 }
 

@@ -54,6 +54,12 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
+
+void Diagnose_PHY_Status(void);
+void Test_PHY_Registers_Comprehensive(void);
+void Check_ETH_DMA_Descriptors(void);
+void Verify_YT8512C_PHY_ID(void);
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
