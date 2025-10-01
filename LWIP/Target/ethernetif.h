@@ -32,19 +32,13 @@
 /* Exported functions ------------------------------------------------------- */
 err_t ethernetif_init(struct netif *netif);
 
-void ethernetif_input(void* argument);
-void ethernet_link_thread(void* argument );
+void ethernet_link_thread(void const * argument);
 
 void Error_Handler(void);
 u32_t sys_jiffies(void);
 u32_t sys_now(void);
 
 /* USER CODE BEGIN 1 */
-#include "stm32f4xx_hal_eth.h"
-
-/* YT8512C PHY驱动函数 */
-int32_t YT8512C_Init(ETH_HandleTypeDef *heth);
-int32_t YT8512C_GetLinkState(ETH_HandleTypeDef *heth);
 
 /* USER CODE END 1 */
 #endif

@@ -41,7 +41,15 @@
 #endif /* WITH_RTOS */
 
 /* USER CODE BEGIN 0 */
+/* Network utility functions */
+void lwip_get_interface_status(void);
+void lwip_ping(const char* target_ip);
+void lwip_print_stats(void);
+void lwip_network_test(void);
+void lwip_periodic_status_check(void);
 
+/* Global network interface */
+extern struct netif gnetif;
 /* USER CODE END 0 */
 
 /* Global Variables ----------------------------------------------------------*/

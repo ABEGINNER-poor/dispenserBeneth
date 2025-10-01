@@ -1,11 +1,11 @@
 Core/Src/loadcell_driver.o: ../Core/Src/loadcell_driver.c \
- C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include/mb.h \
- C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/port/port.h \
+ C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include/mb.h \
+ C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/port/port.h \
  ../Drivers/CMSIS/Include/cmsis_compiler.h \
  ../Drivers/CMSIS/Include/cmsis_gcc.h \
  ../Drivers/CMSIS/Include/cmsis_gcc.h \
- C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include/mbport.h \
- C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include/mbproto.h \
+ C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include/mbport.h \
+ C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include/mbproto.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -39,13 +39,13 @@ Core/Src/loadcell_driver.o: ../Core/Src/loadcell_driver.c \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_usb.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h
-C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include/mb.h:
-C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/port/port.h:
+C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include/mb.h:
+C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/port/port.h:
 ../Drivers/CMSIS/Include/cmsis_compiler.h:
 ../Drivers/CMSIS/Include/cmsis_gcc.h:
 ../Drivers/CMSIS/Include/cmsis_gcc.h:
-C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include/mbport.h:
-C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include/mbproto.h:
+C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include/mbport.h:
+C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include/mbproto.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h:

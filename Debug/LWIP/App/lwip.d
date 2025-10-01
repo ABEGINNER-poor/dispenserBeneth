@@ -59,6 +59,7 @@ LWIP/App/lwip.o: ../LWIP/App/lwip.c ../LWIP/App/lwip.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip4.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ethernet.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ieee.h \
+ ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/etharp.h \
  ../Middlewares/Third_Party/LwIP/src/include/netif/ethernet.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/dhcp.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/timeouts.h \
@@ -83,7 +84,22 @@ LWIP/App/lwip.o: ../LWIP/App/lwip.c ../LWIP/App/lwip.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
  ../LWIP/Target/ethernetif.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/tcpip.h \
- ../Middlewares/Third_Party/LwIP/src/include/lwip/init.h
+ ../Middlewares/Third_Party/LwIP/src/include/lwip/init.h \
+ ../USB_DEVICE/App/usbd_cdc_if.h \
+ ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc/usbd_cdc.h \
+ ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h \
+ ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h \
+ ../USB_DEVICE/Target/usbd_conf.h \
+ ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h \
+ ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h \
+ ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ctlreq.h \
+ ../Middlewares/Third_Party/LwIP/src/include/lwip/icmp.h \
+ ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/icmp.h \
+ ../Middlewares/Third_Party/LwIP/src/include/lwip/inet_chksum.h \
+ ../Middlewares/Third_Party/LwIP/src/include/lwip/ip.h \
+ ../Middlewares/Third_Party/LwIP/src/include/lwip/ip6.h \
+ ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip.h \
+ ../Middlewares/Third_Party/LwIP/src/include/lwip/raw.h
 ../LWIP/App/lwip.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/opt.h:
 ../LWIP/Target/lwipopts.h:
@@ -146,6 +162,7 @@ LWIP/App/lwip.o: ../LWIP/App/lwip.c ../LWIP/App/lwip.h \
 ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip4.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ethernet.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ieee.h:
+../Middlewares/Third_Party/LwIP/src/include/lwip/prot/etharp.h:
 ../Middlewares/Third_Party/LwIP/src/include/netif/ethernet.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/dhcp.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/timeouts.h:
@@ -171,3 +188,18 @@ LWIP/App/lwip.o: ../LWIP/App/lwip.c ../LWIP/App/lwip.h \
 ../LWIP/Target/ethernetif.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/tcpip.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/init.h:
+../USB_DEVICE/App/usbd_cdc_if.h:
+../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc/usbd_cdc.h:
+../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h:
+../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h:
+../USB_DEVICE/Target/usbd_conf.h:
+../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h:
+../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h:
+../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ctlreq.h:
+../Middlewares/Third_Party/LwIP/src/include/lwip/icmp.h:
+../Middlewares/Third_Party/LwIP/src/include/lwip/prot/icmp.h:
+../Middlewares/Third_Party/LwIP/src/include/lwip/inet_chksum.h:
+../Middlewares/Third_Party/LwIP/src/include/lwip/ip.h:
+../Middlewares/Third_Party/LwIP/src/include/lwip/ip6.h:
+../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip.h:
+../Middlewares/Third_Party/LwIP/src/include/lwip/raw.h:

@@ -7,6 +7,8 @@
 C_SRCS += \
 ../Core/Src/bus_servo.c \
 ../Core/Src/freertos.c \
+../Core/Src/fsmc.c \
+../Core/Src/gpio.c \
 ../Core/Src/loadcell_driver.c \
 ../Core/Src/main.c \
 ../Core/Src/modbus_tcp.c \
@@ -16,11 +18,15 @@ C_SRCS += \
 ../Core/Src/sy03b_oem.c \
 ../Core/Src/syscalls.c \
 ../Core/Src/sysmem.c \
-../Core/Src/system_stm32f4xx.c 
+../Core/Src/system_stm32f4xx.c \
+../Core/Src/tim.c \
+../Core/Src/usart.c 
 
 OBJS += \
 ./Core/Src/bus_servo.o \
 ./Core/Src/freertos.o \
+./Core/Src/fsmc.o \
+./Core/Src/gpio.o \
 ./Core/Src/loadcell_driver.o \
 ./Core/Src/main.o \
 ./Core/Src/modbus_tcp.o \
@@ -30,11 +36,15 @@ OBJS += \
 ./Core/Src/sy03b_oem.o \
 ./Core/Src/syscalls.o \
 ./Core/Src/sysmem.o \
-./Core/Src/system_stm32f4xx.o 
+./Core/Src/system_stm32f4xx.o \
+./Core/Src/tim.o \
+./Core/Src/usart.o 
 
 C_DEPS += \
 ./Core/Src/bus_servo.d \
 ./Core/Src/freertos.d \
+./Core/Src/fsmc.d \
+./Core/Src/gpio.d \
 ./Core/Src/loadcell_driver.d \
 ./Core/Src/main.d \
 ./Core/Src/modbus_tcp.d \
@@ -44,17 +54,19 @@ C_DEPS += \
 ./Core/Src/sy03b_oem.d \
 ./Core/Src/syscalls.d \
 ./Core/Src/sysmem.d \
-./Core/Src/system_stm32f4xx.d 
+./Core/Src/system_stm32f4xx.d \
+./Core/Src/tim.d \
+./Core/Src/usart.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
 Core/Src/%.o Core/Src/%.su Core/Src/%.cyclo: ../Core/Src/%.c Core/Src/subdir.mk
-	arm-none-eabi-gcc "$<" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I"C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include" -I"C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/Drivers/BSP/Components/yt8512c" -I"C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/port" -I"C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/rtu" -I"C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/tcp" -I../Core/Inc -I"C:/Users/13016/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/ascii" -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F -I../USB_DEVICE/App -I../USB_DEVICE/Target -I../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I../LWIP/App -I../LWIP/Target -I../Middlewares/Third_Party/LwIP/src/include -I../Middlewares/Third_Party/LwIP/system -I../Middlewares/Third_Party/LwIP/src/include/netif/ppp -I../Middlewares/Third_Party/LwIP/src/include/lwip -I../Middlewares/Third_Party/LwIP/src/include/lwip/apps -I../Middlewares/Third_Party/LwIP/src/include/lwip/priv -I../Middlewares/Third_Party/LwIP/src/include/lwip/prot -I../Middlewares/Third_Party/LwIP/src/include/netif -I../Middlewares/Third_Party/LwIP/src/include/compat/posix -I../Middlewares/Third_Party/LwIP/src/include/compat/posix/arpa -I../Middlewares/Third_Party/LwIP/src/include/compat/posix/net -I../Middlewares/Third_Party/LwIP/src/include/compat/posix/sys -I../Middlewares/Third_Party/LwIP/src/include/compat/stdc -I../Middlewares/Third_Party/LwIP/system/arch -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "$@"
+	arm-none-eabi-gcc "$<" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I"C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/include" -I"C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/Drivers/BSP/Components/yt8512c" -I"C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/port" -I"C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/rtu" -I"C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/tcp" -I../Core/Inc -I"C:/Users/sxy.DESKTOP-VEUVN1V/STM32CubeIDE/workspace_1.19.0/dispenserBeneth/modbus/ascii" -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F -I../USB_DEVICE/App -I../USB_DEVICE/Target -I../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I../LWIP/App -I../LWIP/Target -I../Middlewares/Third_Party/LwIP/src/include -I../Middlewares/Third_Party/LwIP/system -I../Middlewares/Third_Party/LwIP/src/include/netif/ppp -I../Middlewares/Third_Party/LwIP/src/include/lwip -I../Middlewares/Third_Party/LwIP/src/include/lwip/apps -I../Middlewares/Third_Party/LwIP/src/include/lwip/priv -I../Middlewares/Third_Party/LwIP/src/include/lwip/prot -I../Middlewares/Third_Party/LwIP/src/include/netif -I../Middlewares/Third_Party/LwIP/src/include/compat/posix -I../Middlewares/Third_Party/LwIP/src/include/compat/posix/arpa -I../Middlewares/Third_Party/LwIP/src/include/compat/posix/net -I../Middlewares/Third_Party/LwIP/src/include/compat/posix/sys -I../Middlewares/Third_Party/LwIP/src/include/compat/stdc -I../Middlewares/Third_Party/LwIP/system/arch -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "$@"
 
 clean: clean-Core-2f-Src
 
 clean-Core-2f-Src:
-	-$(RM) ./Core/Src/bus_servo.cyclo ./Core/Src/bus_servo.d ./Core/Src/bus_servo.o ./Core/Src/bus_servo.su ./Core/Src/freertos.cyclo ./Core/Src/freertos.d ./Core/Src/freertos.o ./Core/Src/freertos.su ./Core/Src/loadcell_driver.cyclo ./Core/Src/loadcell_driver.d ./Core/Src/loadcell_driver.o ./Core/Src/loadcell_driver.su ./Core/Src/main.cyclo ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/modbus_tcp.cyclo ./Core/Src/modbus_tcp.d ./Core/Src/modbus_tcp.o ./Core/Src/modbus_tcp.su ./Core/Src/stm32f4xx_hal_msp.cyclo ./Core/Src/stm32f4xx_hal_msp.d ./Core/Src/stm32f4xx_hal_msp.o ./Core/Src/stm32f4xx_hal_msp.su ./Core/Src/stm32f4xx_hal_timebase_tim.cyclo ./Core/Src/stm32f4xx_hal_timebase_tim.d ./Core/Src/stm32f4xx_hal_timebase_tim.o ./Core/Src/stm32f4xx_hal_timebase_tim.su ./Core/Src/stm32f4xx_it.cyclo ./Core/Src/stm32f4xx_it.d ./Core/Src/stm32f4xx_it.o ./Core/Src/stm32f4xx_it.su ./Core/Src/sy03b_oem.cyclo ./Core/Src/sy03b_oem.d ./Core/Src/sy03b_oem.o ./Core/Src/sy03b_oem.su ./Core/Src/syscalls.cyclo ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.cyclo ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32f4xx.cyclo ./Core/Src/system_stm32f4xx.d ./Core/Src/system_stm32f4xx.o ./Core/Src/system_stm32f4xx.su
+	-$(RM) ./Core/Src/bus_servo.cyclo ./Core/Src/bus_servo.d ./Core/Src/bus_servo.o ./Core/Src/bus_servo.su ./Core/Src/freertos.cyclo ./Core/Src/freertos.d ./Core/Src/freertos.o ./Core/Src/freertos.su ./Core/Src/fsmc.cyclo ./Core/Src/fsmc.d ./Core/Src/fsmc.o ./Core/Src/fsmc.su ./Core/Src/gpio.cyclo ./Core/Src/gpio.d ./Core/Src/gpio.o ./Core/Src/gpio.su ./Core/Src/loadcell_driver.cyclo ./Core/Src/loadcell_driver.d ./Core/Src/loadcell_driver.o ./Core/Src/loadcell_driver.su ./Core/Src/main.cyclo ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/modbus_tcp.cyclo ./Core/Src/modbus_tcp.d ./Core/Src/modbus_tcp.o ./Core/Src/modbus_tcp.su ./Core/Src/stm32f4xx_hal_msp.cyclo ./Core/Src/stm32f4xx_hal_msp.d ./Core/Src/stm32f4xx_hal_msp.o ./Core/Src/stm32f4xx_hal_msp.su ./Core/Src/stm32f4xx_hal_timebase_tim.cyclo ./Core/Src/stm32f4xx_hal_timebase_tim.d ./Core/Src/stm32f4xx_hal_timebase_tim.o ./Core/Src/stm32f4xx_hal_timebase_tim.su ./Core/Src/stm32f4xx_it.cyclo ./Core/Src/stm32f4xx_it.d ./Core/Src/stm32f4xx_it.o ./Core/Src/stm32f4xx_it.su ./Core/Src/sy03b_oem.cyclo ./Core/Src/sy03b_oem.d ./Core/Src/sy03b_oem.o ./Core/Src/sy03b_oem.su ./Core/Src/syscalls.cyclo ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.cyclo ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32f4xx.cyclo ./Core/Src/system_stm32f4xx.d ./Core/Src/system_stm32f4xx.o ./Core/Src/system_stm32f4xx.su ./Core/Src/tim.cyclo ./Core/Src/tim.d ./Core/Src/tim.o ./Core/Src/tim.su ./Core/Src/usart.cyclo ./Core/Src/usart.d ./Core/Src/usart.o ./Core/Src/usart.su
 
 .PHONY: clean-Core-2f-Src
 

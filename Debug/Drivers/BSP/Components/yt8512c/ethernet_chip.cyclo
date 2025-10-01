@@ -1,0 +1,10 @@
+../Drivers/BSP/Components/yt8512c/ethernet_chip.c:50:10:eth_chip_regster_bus_io	5
+../Drivers/BSP/Components/yt8512c/ethernet_chip.c:75:9:eth_chip_init	20
+../Drivers/BSP/Components/yt8512c/ethernet_chip.c:228:9:eth_chip_deinit	4
+../Drivers/BSP/Components/yt8512c/ethernet_chip.c:253:9:eth_chip_disable_power_down_mode	3
+../Drivers/BSP/Components/yt8512c/ethernet_chip.c:283:9:eth_chip_enable_power_down_mode	3
+../Drivers/BSP/Components/yt8512c/ethernet_chip.c:313:9:eth_chip_start_auto_nego	3
+../Drivers/BSP/Components/yt8512c/ethernet_chip.c:346:9:eth_chip_get_link_state	6
+../Drivers/BSP/Components/yt8512c/ethernet_chip.c:383:9:eth_chip_set_link_state	7
+../Drivers/BSP/Components/yt8512c/ethernet_chip.c:436:9:eth_chip_enable_loop_back_mode	3
+../Drivers/BSP/Components/yt8512c/ethernet_chip.c:467:9:eth_chip_disable_loop_back_mode	3

@@ -85,6 +85,7 @@ Middlewares/Third_Party/LwIP/src/api/tcpip.o: \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/etharp.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ethernet.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ieee.h \
+ ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/etharp.h \
  ../Middlewares/Third_Party/LwIP/src/include/netif/ethernet.h
 ../Middlewares/Third_Party/LwIP/src/include/lwip/opt.h:
 ../LWIP/Target/lwipopts.h:
@@ -172,4 +173,5 @@ Middlewares/Third_Party/LwIP/src/api/tcpip.o: \
 ../Middlewares/Third_Party/LwIP/src/include/lwip/etharp.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ethernet.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ieee.h:
+../Middlewares/Third_Party/LwIP/src/include/lwip/prot/etharp.h:
 ../Middlewares/Third_Party/LwIP/src/include/netif/ethernet.h:

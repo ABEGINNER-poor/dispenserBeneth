@@ -1,2 +1,9 @@
-../LWIP/App/lwip.c:58:6:MX_LWIP_Init	64	static
-../LWIP/App/lwip.c:121:13:ethernet_link_status_updated	16	static
+../LWIP/App/lwip.c:39:13:lwip_cdc_debug_printf	24	static
+../LWIP/App/lwip.c:55:13:lwip_cdc_debug_log	160	static
+../LWIP/App/lwip.c:79:6:lwip_get_interface_status	280	static
+../LWIP/App/lwip.c:111:6:lwip_ping	80	static
+../LWIP/App/lwip.c:125:6:lwip_print_stats	304	static
+../LWIP/App/lwip.c:190:6:lwip_network_test	8	static
+../LWIP/App/lwip.c:215:6:lwip_periodic_status_check	16	static
+../LWIP/App/lwip.c:232:6:MX_LWIP_Init	192	static
+../LWIP/App/lwip.c:305:13:ethernet_link_status_updated	144	static

@@ -82,6 +82,7 @@ Middlewares/Third_Party/LwIP/src/netif/bridgeif.o: \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/etharp.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/ip4.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip4.h \
+ ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/etharp.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/ethip6.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/snmp.h
 ../Middlewares/Third_Party/LwIP/src/include/netif/bridgeif.h:
@@ -167,5 +168,6 @@ Middlewares/Third_Party/LwIP/src/netif/bridgeif.o: \
 ../Middlewares/Third_Party/LwIP/src/include/lwip/etharp.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/ip4.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip4.h:
+../Middlewares/Third_Party/LwIP/src/include/lwip/prot/etharp.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/ethip6.h:
 ../Middlewares/Third_Party/LwIP/src/include/lwip/snmp.h:

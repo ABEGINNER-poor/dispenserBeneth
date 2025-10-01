@@ -199,19 +199,23 @@ void TIM7_IRQHandler(void)
 void ETH_IRQHandler(void)
 {
   /* USER CODE BEGIN ETH_IRQn 0 */
-  static uint32_t eth_irq_count = 0;
-  eth_irq_count++;
+  uint32_t dma_status = ETH->DMASR;
+  char debug_msg[128];
   
-  // 每100次中断输出一次计数，避免太多日志
-  if (eth_irq_count % 100 == 1) {
-    char debug_msg[40];
-    snprintf(debug_msg, sizeof(debug_msg), "⚡ ETH中断 #%lu\r\n", eth_irq_count);
-    CDC_Transmit_FS((uint8_t*)debug_msg, strlen(debug_msg));
-  }
+  snprintf(debug_msg, sizeof(debug_msg), 
+           "ETH_IRQ: DMASR=0x%08lX, NIS=%lu, AIS=%lu, RS=%lu, TS=%lu", 
+           dma_status,
+           (dma_status & ETH_DMASR_NIS) ? 1UL : 0UL,  // Normal interrupt
+           (dma_status & ETH_DMASR_AIS) ? 1UL : 0UL,  // Abnormal interrupt  
+           (dma_status & ETH_DMASR_RS) ? 1UL : 0UL,   // Receive status
+           (dma_status & ETH_DMASR_TS) ? 1UL : 0UL);  // Transmit status
+  
+  CDC_Transmit_FS((uint8_t*)debug_msg, strlen(debug_msg));
   /* USER CODE END ETH_IRQn 0 */
   HAL_ETH_IRQHandler(&heth);
   /* USER CODE BEGIN ETH_IRQn 1 */
-
+  char completion_msg[] = "[ETH_IRQ] IRQ Handler completed\r\n";
+  CDC_Transmit_FS((uint8_t*)completion_msg, strlen(completion_msg));
   /* USER CODE END ETH_IRQn 1 */
 }
 
