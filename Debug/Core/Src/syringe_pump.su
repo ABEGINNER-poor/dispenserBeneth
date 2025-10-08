@@ -1,0 +1,8 @@
+../Core/Src/syringe_pump.c:4:5:send_command	304	static
+../Core/Src/syringe_pump.c:30:5:pump_init	16	static
+../Core/Src/syringe_pump.c:35:5:pump_move_absolute	48	static
+../Core/Src/syringe_pump.c:42:5:pump_pick_relative	48	static
+../Core/Src/syringe_pump.c:49:5:pump_dispense_relative	48	static
+../Core/Src/syringe_pump.c:56:5:pump_set_speed	48	static
+../Core/Src/syringe_pump.c:63:5:pump_stop	16	static
+../Core/Src/syringe_pump.c:68:5:pump_get_status	16	static

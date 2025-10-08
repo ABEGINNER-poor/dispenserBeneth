@@ -1,3 +1,10 @@
-../Core/Src/modbus_tcp.c:7:6:modbus_tcp_init	1
-../Core/Src/modbus_tcp.c:15:7:modbus_tcp_accept	1
-../Core/Src/modbus_tcp.c:21:7:modbus_tcp_recv	12
+../Core/Src/modbus_tcp.c:6:13:cdc_debug_log	6
+../Core/Src/modbus_tcp.c:41:13:int_to_str	8
+../Core/Src/modbus_tcp.c:84:13:hex_to_str	1
+../Core/Src/modbus_tcp.c:93:13:dump_data	5
+../Core/Src/modbus_tcp.c:130:14:process_modbus_request	13
+../Core/Src/modbus_tcp.c:269:6:modbus_tcp_init	8
+../Core/Src/modbus_tcp.c:330:7:modbus_tcp_sent	1
+../Core/Src/modbus_tcp.c:341:6:modbus_tcp_error	1
+../Core/Src/modbus_tcp.c:349:7:modbus_tcp_accept	3
+../Core/Src/modbus_tcp.c:370:7:modbus_tcp_recv	11

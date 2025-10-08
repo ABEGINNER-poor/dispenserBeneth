@@ -1,4 +1,0 @@
-../Core/Src/sy03b_oem.c:10:9:calculate_checksum	24	static
-../Core/Src/sy03b_oem.c:19:5:oem_send_command	1600	static
-../Core/Src/sy03b_oem.c:60:5:is_pump_busy	16	static
-../Core/Src/sy03b_oem.c:65:16:get_error_code	16	static

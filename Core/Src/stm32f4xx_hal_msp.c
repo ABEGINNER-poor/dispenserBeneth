@@ -140,9 +140,7 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth)
     HAL_Delay(100);
 
     /* USER CODE BEGIN ETH_MspInit 1 */
-    /* Configure ETH interrupt */
-    HAL_NVIC_SetPriority(ETH_IRQn, 6, 0);
-    HAL_NVIC_EnableIRQ(ETH_IRQn);
+
     /* USER CODE END ETH_MspInit 1 */
   }
 }

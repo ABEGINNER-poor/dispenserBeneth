@@ -1,0 +1,9 @@
+../Core/Src/modbus_tcp_fixed.c:6:13:cdc_debug_log	152	static
+../Core/Src/modbus_tcp_fixed.c:41:13:int_to_str	48	static
+../Core/Src/modbus_tcp_fixed.c:84:13:hex_to_str	48	static
+../Core/Src/modbus_tcp_fixed.c:93:13:dump_data	168	static
+../Core/Src/modbus_tcp_fixed.c:130:14:process_modbus_request	1224	static
+../Core/Src/modbus_tcp_fixed.c:254:6:modbus_tcp_init	80	static
+../Core/Src/modbus_tcp_fixed.c:292:6:modbus_tcp_error	64	static
+../Core/Src/modbus_tcp_fixed.c:300:7:modbus_tcp_accept	24	static
+../Core/Src/modbus_tcp_fixed.c:320:7:modbus_tcp_recv	1264	static

@@ -111,6 +111,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  modbus_tcp_init();
   while (1)
   {
     /* USER CODE END WHILE */

@@ -11,7 +11,7 @@
 #define FC_WRITE_MULTIPLE 0x10
 
 // 寄存器数组（模拟PDF中Holding Registers，地址4xxxx -> 数组索引0起）
-extern uint16_t holding_regs[1000]; // 示例大小，根据PDF调整
+extern uint16_t holding_regs[100]; // 100个寄存器足够使用
 
 void modbus_tcp_init(void);
 err_t modbus_tcp_accept(void *arg, struct tcp_pcb *newpcb, err_t err);
