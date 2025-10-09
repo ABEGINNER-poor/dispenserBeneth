@@ -1,3 +1,4 @@
+"./Core/Src/app_business.o"
 "./Core/Src/bus_servo.o"
 "./Core/Src/freertos.o"
 "./Core/Src/fsmc.o"

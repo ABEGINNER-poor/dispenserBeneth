@@ -210,6 +210,109 @@ static err_t process_modbus_request(struct tcp_pcb *tpcb, uint8_t* buf, uint16_t
                 cdc_debug_log("MODBUS_TCP", "Read success");
             }
         }
+    } else if (fc == FC_WRITE_SINGLE) {
+        cdc_debug_log("MODBUS_TCP", "Processing write single");
+        
+        // 检查数据长度是否足够：单元ID + 功能码 + 地址 + 值 = 1+1+2+2 = 6
+        if (length < 6) {
+            cdc_debug_log("MODBUS_TCP", "Write single request too short");
+            reply[7] = fc + 0x80;  // 异常函数码
+            reply[8] = 0x03;       // 异常代码：非法数据值
+            reply_data_len = 2;
+        } else {
+            uint16_t addr = (buf[offset+8] << 8) | buf[offset+9];   // 寄存器地址
+            uint16_t value = (buf[offset+10] << 8) | buf[offset+11]; // 要写入的值
+            
+            char write_info[60];
+            strcpy(write_info, "Write addr=");
+            int_to_str(addr, write_info + strlen(write_info), 10);
+            const char* val_prefix = " val=0x";
+            strcat(write_info, val_prefix);
+            // 简单的十六进制转换
+            char hex_str[5];
+            hex_str[4] = '\0';
+            for (int j = 3; j >= 0; j--) {
+                int nibble = (value >> (j * 4)) & 0xF;
+                hex_str[3-j] = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
+            }
+            strcat(write_info, hex_str);
+            cdc_debug_log("MODBUS_TCP", write_info);
+            
+            // 验证地址范围
+            if (addr >= 100) {
+                cdc_debug_log("MODBUS_TCP", "Write address out of bounds");
+                reply[7] = fc + 0x80;  // 异常函数码
+                reply[8] = 0x02;       // 异常代码：非法数据地址
+                reply_data_len = 2;
+            } else {
+                // 写入寄存器
+                holding_regs[addr] = value;
+                
+                // 回显请求（标准Modbus写单个寄存器响应）
+                reply[7] = fc;                           // 函数码
+                reply[8] = (addr >> 8) & 0xFF;          // 地址高字节
+                reply[9] = addr & 0xFF;                 // 地址低字节
+                reply[10] = (value >> 8) & 0xFF;        // 值高字节
+                reply[11] = value & 0xFF;               // 值低字节
+                reply_data_len = 5; // 功能码 + 地址 + 值 = 1+2+2 = 5
+                cdc_debug_log("MODBUS_TCP", "Write single success");
+            }
+        }
+    } else if (fc == FC_WRITE_MULTIPLE) {
+        cdc_debug_log("MODBUS_TCP", "Processing write multiple");
+        
+        // 检查数据长度是否足够：单元ID + 功能码 + 起始地址 + 数量 + 字节数 = 1+1+2+2+1 = 7
+        if (length < 7) {
+            cdc_debug_log("MODBUS_TCP", "Write multiple request too short");
+            reply[7] = fc + 0x80;  // 异常函数码
+            reply[8] = 0x03;       // 异常代码：非法数据值
+            reply_data_len = 2;
+        } else {
+            uint16_t addr = (buf[offset+8] << 8) | buf[offset+9];   // 起始地址
+            uint16_t qty = (buf[offset+10] << 8) | buf[offset+11];  // 寄存器数量
+            uint8_t byte_count = buf[offset+12];                    // 字节数
+            
+            char write_info[60];
+            strcpy(write_info, "Write mult addr=");
+            int_to_str(addr, write_info + strlen(write_info), 10);
+            const char* qty_prefix = " qty=";
+            strcat(write_info, qty_prefix);
+            int_to_str(qty, write_info + strlen(write_info), 10);
+            cdc_debug_log("MODBUS_TCP", write_info);
+            
+            // 验证参数
+            if (qty == 0 || qty > 123 || byte_count != qty * 2) { // Modbus标准限制
+                cdc_debug_log("MODBUS_TCP", "Invalid write multiple parameters");
+                reply[7] = fc + 0x80;  // 异常函数码
+                reply[8] = 0x03;       // 异常代码：非法数据值
+                reply_data_len = 2;
+            } else if (addr + qty > 100) { // 地址越界检查
+                cdc_debug_log("MODBUS_TCP", "Write multiple address out of bounds");
+                reply[7] = fc + 0x80;  // 异常函数码
+                reply[8] = 0x02;       // 异常代码：非法数据地址
+                reply_data_len = 2;
+            } else if (length < 7 + byte_count) { // 检查是否有足够的数据
+                cdc_debug_log("MODBUS_TCP", "Write multiple data incomplete");
+                reply[7] = fc + 0x80;  // 异常函数码
+                reply[8] = 0x03;       // 异常代码：非法数据值
+                reply_data_len = 2;
+            } else {
+                // 写入多个寄存器
+                for (uint16_t i = 0; i < qty; i++) {
+                    uint16_t value = (buf[offset+13+i*2] << 8) | buf[offset+14+i*2];
+                    holding_regs[addr + i] = value;
+                }
+                
+                // 响应：功能码 + 起始地址 + 寄存器数量
+                reply[7] = fc;                          // 函数码
+                reply[8] = (addr >> 8) & 0xFF;         // 起始地址高字节
+                reply[9] = addr & 0xFF;                // 起始地址低字节
+                reply[10] = (qty >> 8) & 0xFF;         // 数量高字节
+                reply[11] = qty & 0xFF;                // 数量低字节
+                reply_data_len = 5; // 功能码 + 地址 + 数量 = 1+2+2 = 5
+                cdc_debug_log("MODBUS_TCP", "Write multiple success");
+            }
+        }
     } else {
         // 其他功能码暂时返回不支持
         cdc_debug_log("MODBUS_TCP", "Unsupported function code");

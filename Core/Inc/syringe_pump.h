@@ -4,8 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <errno.h>
+#include "main.h"  // STM32 HAL头文件
 
 // 定义常量
 #define PUMP_ADDRESS '0'  // 地址，ASCII '0' (0x30)
@@ -19,14 +18,14 @@
 #define CMD_STOP "TR"       // 终止运动
 #define CMD_STATUS "?"      // 查询状态
 
-// 函数声明
-int send_command(int fd, const char* cmd, char* response, size_t resp_size);
-int pump_init(int fd);
-int pump_move_absolute(int fd, int position);
-int pump_pick_relative(int fd, int steps);
-int pump_dispense_relative(int fd, int steps);
-int pump_set_speed(int fd, int speed);
-int pump_stop(int fd);
-int pump_get_status(int fd, char* status);
+// 函数声明 - 适配STM32版本
+int send_command(int pump_id, const char* cmd, char* response, size_t resp_size);
+int pump_init(int pump_id);
+int pump_move_absolute(int pump_id, int position);
+int pump_pick_relative(int pump_id, int steps);
+int pump_dispense_relative(int pump_id, int steps);
+int pump_set_speed(int pump_id, int speed);
+int pump_stop(int pump_id);
+int pump_get_status(int pump_id, char* status);
 
 #endif // SYRINGE_PUMP_H

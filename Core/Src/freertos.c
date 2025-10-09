@@ -25,7 +25,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include  "modbus_tcp.h"
+#include "modbus_tcp.h"
+#include "app_business.h"
+#include "usbd_cdc_if.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -35,7 +38,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define BUSINESS_PROCESS_CYCLE_MS   100   // 100ms业务处理周期
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,7 +48,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+static uint32_t business_cycle_counter = 0;  // 业务处理计数器
+static char debug_buf[64];                    // Keep alive 调试缓冲区
+static uint32_t keep_alive_counter = 0;       // Keep alive 计数器
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
 
@@ -129,10 +134,25 @@ void StartDefaultTask(void const * argument)
   MX_LWIP_Init();
   /* USER CODE BEGIN StartDefaultTask */
   modbus_tcp_init();
+  app_business_init();
+  
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    // 每100ms执行一次业务逻辑处理
+    if (business_cycle_counter % BUSINESS_PROCESS_CYCLE_MS == 0) {
+      app_business_process();
+    }
+    
+    // Keep alive 消息每1000ms（约1秒）发送一次
+    if (keep_alive_counter % 1000 == 0) {
+      int len = snprintf(debug_buf, sizeof(debug_buf), "Keep Alive: %lu\r\n", keep_alive_counter / 1000);
+      CDC_Transmit_FS((uint8_t*)debug_buf, len);
+    }
+    
+    business_cycle_counter++;
+    keep_alive_counter++;
+    osDelay(1);  // 1ms延时
   }
   /* USER CODE END StartDefaultTask */
 }
