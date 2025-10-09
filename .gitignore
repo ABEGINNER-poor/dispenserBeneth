@@ -1,0 +1,23 @@
+# 仅忽略编译中间文件和构建输出
+
+## 构建输出目录
+Debug/
+Release/
+
+## 编译生成的文件
+*.elf
+*.hex
+*.bin
+*.map
+*.list
+*.o
+*.obj
+*.d
+*.su
+
+## 自动生成的构建文件
+makefile
+objects.mk
+objects.list
+sources.mk
+subdir.mk
