@@ -28,6 +28,25 @@ void BusServo_Move(uint8_t id, uint16_t position, uint16_t time) {
     BusServo_SendCmd(CMD_SERVO_MOVE, params, 6);
 }
 
+// 控制多舵机同时转动
+void BusServo_MultMove(uint8_t *ids, uint16_t *positions, uint8_t servo_count, uint16_t time) {
+    uint8_t params[256];  // 足够大的缓冲区
+    uint8_t idx = 0;
+    
+    params[idx++] = servo_count;    // 舵机数量
+    params[idx++] = time & 0xFF;    // 时间低8位  
+    params[idx++] = (time >> 8) & 0xFF;  // 时间高8位
+    
+    // 添加每个舵机的ID和位置
+    for (uint8_t i = 0; i < servo_count; i++) {
+        params[idx++] = ids[i];     // 舵机ID
+        params[idx++] = positions[i] & 0xFF;        // 位置低8位
+        params[idx++] = (positions[i] >> 8) & 0xFF; // 位置高8位
+    }
+    
+    BusServo_SendCmd(CMD_SERVO_MOVE, params, idx);
+}
+
 // 运行动作组
 void BusServo_ActionGroupRun(uint8_t group, uint16_t times) {
     uint8_t params[3];
@@ -55,11 +74,18 @@ void BusServo_ActionGroupSpeed(uint8_t group, uint16_t speed_percent) {
 uint16_t BusServo_GetBatteryVoltage(void) {
     BusServo_SendCmd(CMD_GET_BATTERY_VOLTAGE, NULL, 0);
     uint8_t rx_buf[6];
-    HAL_UART_Receive(&huart6, rx_buf, 6, HAL_MAX_DELAY);  // 接收响应
-    if (rx_buf[0] == 0x55 && rx_buf[1] == 0x55 && rx_buf[3] == CMD_GET_BATTERY_VOLTAGE) {
-        return (rx_buf[5] << 8) | rx_buf[4];  // 高低8位
+    
+    // 使用较短超时时间 (200ms) 而不是HAL_MAX_DELAY
+    HAL_StatusTypeDef status = HAL_UART_Receive(&huart6, rx_buf, 6, 200);
+    
+    if (status == HAL_OK) {
+        // 检查响应帧头和命令码
+        if (rx_buf[0] == 0x55 && rx_buf[1] == 0x55 && rx_buf[3] == CMD_GET_BATTERY_VOLTAGE) {
+            return (rx_buf[5] << 8) | rx_buf[4];  // 高低8位
+        }
     }
-    return 0;  // 错误返回0
+    
+    return 0;  // 超时或错误返回0
 }
 
 // 多舵机卸力
@@ -77,14 +103,44 @@ void BusServo_MultPosRead(uint8_t *ids, uint8_t id_cnt, uint16_t *positions) {
     memcpy(&params[1], ids, id_cnt);
     BusServo_SendCmd(CMD_MULT_SERVO_POS_READ, params, id_cnt + 1);
 
-    // 接收响应：Length = id_cnt*3 + 3
+    // 接收响应：使用较短的超时时间，避免长时间阻塞
     uint8_t rx_len = id_cnt * 3 + 5;  // 总长度：头2 + len1 + cmd1 + data
     uint8_t rx_buf[256];
-    HAL_UART_Receive(&huart6, rx_buf, rx_len, HAL_MAX_DELAY);
-    if (rx_buf[0] == 0x55 && rx_buf[1] == 0x55 && rx_buf[3] == CMD_MULT_SERVO_POS_READ) {
-        for (uint8_t i = 0; i < id_cnt; i++) {
-            uint8_t offset = 4 + i * 3;  // 数据从rx_buf[4]开始
-            positions[i] = (rx_buf[offset + 2] << 8) | rx_buf[offset + 1];
-        }
+    
+    // 初始化位置数组为默认值
+    for (uint8_t i = 0; i < id_cnt; i++) {
+        positions[i] = 3;  // 默认位置3代表读取失败
     }
+    
+    // 使用较短超时时间 (200ms) 而不是HAL_MAX_DELAY
+    HAL_StatusTypeDef status = HAL_UART_Receive(&huart6, rx_buf, rx_len, 200);
+    
+    if (status == HAL_OK) {
+        // 检查响应帧头和命令码
+        if (rx_buf[0] == 0x55 && rx_buf[1] == 0x55 && rx_buf[3] == CMD_MULT_SERVO_POS_READ) {
+            // 解析实际返回的舵机数量
+            uint8_t actual_count = rx_buf[2] / 3;  // 数据长度除以3得到舵机数量
+            uint8_t parse_count = (actual_count < id_cnt) ? actual_count : id_cnt;
+            
+            for (uint8_t i = 0; i < parse_count; i++) {
+                uint8_t offset = 4 + i * 3;  // 数据从rx_buf[4]开始
+                if (offset + 2 < sizeof(rx_buf)) {  // 边界检查
+                    positions[i] = (rx_buf[offset + 2] << 8) | rx_buf[offset + 1];
+                }
+            }
+        }
+    } else if (status == HAL_TIMEOUT) {
+        // 超时情况下保持默认值，不做额外处理
+        // positions数组已经初始化为默认值500
+    }
+    // 对于其他错误情况，也保持默认值
+}
+
+// 读取单个舵机位置（非阻塞版本）
+uint16_t BusServo_ReadSinglePosition(uint8_t id) {
+    uint8_t ids[1] = {id};
+    uint16_t positions[1];
+    
+    BusServo_MultPosRead(ids, 1, positions);
+    return positions[0];  // 返回位置值，如果失败返回默认值500
 }

@@ -17,6 +17,8 @@
 #define CMD_SET_SPEED "V%dR" // 设置速度，%d为脉冲/秒
 #define CMD_STOP "TR"       // 终止运动
 #define CMD_STATUS "?"      // 查询状态
+#define CMD_ERROR_QUERY "QR"  // 查询错误码
+#define CMD_POSITION_QUERY "?4R"  // 查询当前活塞位置
 
 // 函数声明 - 适配STM32版本
 int send_command(int pump_id, const char* cmd, char* response, size_t resp_size);
@@ -27,5 +29,7 @@ int pump_dispense_relative(int pump_id, int steps);
 int pump_set_speed(int pump_id, int speed);
 int pump_stop(int pump_id);
 int pump_get_status(int pump_id, char* status);
+int pump_query_error(int pump_id, char* error_code);  // 新增：查询错误码
+int pump_query_position(int pump_id, int* position); // 新增：查询当前位置
 
 #endif // SYRINGE_PUMP_H

@@ -40,8 +40,8 @@ int send_command(int pump_id, const char* cmd, char* response, size_t resp_size)
     if (response && resp_size > 0) {
         memset(response, 0, resp_size);
         
-        // 等待响应，超时时间1秒
-        status = HAL_UART_Receive(&huart3, (uint8_t*)response, resp_size - 1, 1000);
+        // 等待响应，超时时间200ms
+        status = HAL_UART_Receive(&huart3, (uint8_t*)response, resp_size - 1, 200);
         if (status == HAL_OK) {
             // 找到实际接收到的数据长度
             size_t actual_len = strlen(response);
@@ -106,4 +106,30 @@ int pump_stop(int pump_id) {
 // 获取状态
 int pump_get_status(int pump_id, char* status) {
     return send_command(pump_id, CMD_STATUS, status, 256);
+}
+
+// 查询错误码
+int pump_query_error(int pump_id, char* error_code) {
+    return send_command(pump_id, CMD_ERROR_QUERY, error_code, 256);
+}
+
+// 查询当前活塞位置
+int pump_query_position(int pump_id, int* position) {
+    char response[256];
+    int result = send_command(pump_id, CMD_POSITION_QUERY, response, sizeof(response));
+    
+    if (result == 0 && position != NULL) {
+        // 解析响应，从类似 "FF /0`3000 03 0D 0A" 格式中提取位置
+        // 寻找 '`' 字符后的数字
+        char* pos_start = strchr(response, '`');
+        if (pos_start != NULL) {
+            pos_start++; // 跳过 '`' 字符
+            *position = atoi(pos_start);
+        } else {
+            *position = -1;  // 解析失败
+            return -1;
+        }
+    }
+    
+    return result;
 }

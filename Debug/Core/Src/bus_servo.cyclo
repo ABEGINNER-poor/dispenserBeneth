@@ -1,8 +1,10 @@
 ../Core/Src/bus_servo.c:5:6:BusServo_SendCmd	3
 ../Core/Src/bus_servo.c:20:6:BusServo_Move	1
-../Core/Src/bus_servo.c:32:6:BusServo_ActionGroupRun	1
-../Core/Src/bus_servo.c:41:6:BusServo_ActionGroupStop	1
-../Core/Src/bus_servo.c:46:6:BusServo_ActionGroupSpeed	1
-../Core/Src/bus_servo.c:55:10:BusServo_GetBatteryVoltage	4
-../Core/Src/bus_servo.c:66:6:BusServo_MultUnload	1
-../Core/Src/bus_servo.c:74:6:BusServo_MultPosRead	5
+../Core/Src/bus_servo.c:32:6:BusServo_MultMove	2
+../Core/Src/bus_servo.c:51:6:BusServo_ActionGroupRun	1
+../Core/Src/bus_servo.c:60:6:BusServo_ActionGroupStop	1
+../Core/Src/bus_servo.c:65:6:BusServo_ActionGroupSpeed	1
+../Core/Src/bus_servo.c:74:10:BusServo_GetBatteryVoltage	5
+../Core/Src/bus_servo.c:92:6:BusServo_MultUnload	1
+../Core/Src/bus_servo.c:100:6:BusServo_MultPosRead	8
+../Core/Src/bus_servo.c:140:10:BusServo_ReadSinglePosition	1

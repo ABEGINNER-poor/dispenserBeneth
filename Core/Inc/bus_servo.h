@@ -23,5 +23,7 @@ void BusServo_ActionGroupSpeed(uint8_t group, uint16_t speed_percent);
 uint16_t BusServo_GetBatteryVoltage(void);
 void BusServo_MultUnload(uint8_t *ids, uint8_t id_cnt);
 void BusServo_MultPosRead(uint8_t *ids, uint8_t id_cnt, uint16_t *positions);
+uint16_t BusServo_ReadSinglePosition(uint8_t id);  // 新增：读取单个舵机位置
+void BusServo_MultMove(uint8_t *ids, uint16_t *positions, uint8_t servo_count, uint16_t time);  // 新增：多舵机同时移动
 
 #endif

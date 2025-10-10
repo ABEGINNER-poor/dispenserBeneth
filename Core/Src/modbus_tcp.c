@@ -372,7 +372,7 @@ static err_t process_modbus_request(struct tcp_pcb *tpcb, uint8_t* buf, uint16_t
 void modbus_tcp_init(void) {
     // 首先清零所有寄存器
     for (int i = 0; i < 100; i++) {
-        holding_regs[i] = 0;
+        holding_regs[i] = 3;
     }
     
 
