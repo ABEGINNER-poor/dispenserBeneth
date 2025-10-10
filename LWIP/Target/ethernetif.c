@@ -47,11 +47,11 @@
 static void cdc_debug_printf(const char *msg)
 {
   uint8_t len = strlen(msg);
-  if (len > 0)
+  /*if (len > 0)
   {
     CDC_Transmit_FS((uint8_t*)msg, len);
     HAL_Delay(1); // Small delay to ensure transmission
-  }
+  }*/
 }
 
 /**

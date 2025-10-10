@@ -1,5 +1,6 @@
 "./Core/Src/app_business.o"
 "./Core/Src/bus_servo.o"
+"./Core/Src/dma.o"
 "./Core/Src/freertos.o"
 "./Core/Src/fsmc.o"
 "./Core/Src/gpio.o"

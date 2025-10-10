@@ -32,9 +32,9 @@ static void cdc_debug_log(const char* tag, const char* message)
     debug_buf[len++] = '\n';
     
     // 通过CDC发送
-    if (len < sizeof(debug_buf)) {
+    /*if (len < sizeof(debug_buf)) {
         CDC_Transmit_FS((uint8_t*)debug_buf, len);
-    }
+    }*/
 }
 
 // 简单的整数转字符串函数

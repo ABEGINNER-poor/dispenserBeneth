@@ -144,11 +144,13 @@ void StartDefaultTask(void const * argument)
       app_business_process();
     }
     
-    // Keep alive 消息每1000ms（约1秒）发送一次
+    // Keep alive 消息每1000ms（约1秒）发送一次 - 暂时注释掉避免调试信息过载
+    
     if (keep_alive_counter % 1000 == 0) {
       int len = snprintf(debug_buf, sizeof(debug_buf), "Keep Alive: %lu\r\n", keep_alive_counter / 1000);
       CDC_Transmit_FS((uint8_t*)debug_buf, len);
     }
+    
     
     business_cycle_counter++;
     keep_alive_counter++;

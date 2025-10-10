@@ -1,4 +1,4 @@
-../LWIP/Target/ethernetif.c:47:13:cdc_debug_printf	2
+../LWIP/Target/ethernetif.c:47:13:cdc_debug_printf	1
 ../LWIP/Target/ethernetif.c:63:13:cdc_debug_log	1
 ../LWIP/Target/ethernetif.c:172:13:ethernet_frame_debug	6
 ../LWIP/Target/ethernetif.c:215:13:debug_eth_dma_descriptors	3

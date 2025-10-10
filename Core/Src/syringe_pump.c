@@ -3,7 +3,25 @@
 #include "main.h"   // HAL头文件
 #include "usbd_cdc_if.h"  // 用于调试输出
 
-// 发送命令并读取响应 - STM32 USART3版本
+// 静态变量
+static char pump_debug_buf[128];  // 调试信息缓冲区
+
+// 内部函数声明
+static void pump_debug_print(const char* message);
+
+/**
+  * @brief  泵驱动调试输出函数
+  * @param  message: 调试信息字符串
+  * @retval None
+  */
+static void pump_debug_print(const char* message) {
+    int len = snprintf(pump_debug_buf, sizeof(pump_debug_buf), "[PUMP] %s\r\n", message);
+    if (len > 0 && len < sizeof(pump_debug_buf)) {
+        CDC_Transmit_FS((uint8_t*)pump_debug_buf, len);  // 暂时启用调试输出
+    }
+}
+
+// 发送命令并读取响应 - STM32 USART3版本 - 简化的不定长接收
 int send_command(int pump_id, const char* cmd, char* response, size_t resp_size) {
     char buffer[256];
     char debug_msg[128];
@@ -16,53 +34,105 @@ int send_command(int pump_id, const char* cmd, char* response, size_t resp_size)
     } else if (pump_id == 2) {
         pump_address = '2';  // 泵2地址为'2'
     } else {
-        snprintf(debug_msg, sizeof(debug_msg), "Invalid pump_id: %d\r\n", pump_id);
-        CDC_Transmit_FS((uint8_t*)debug_msg, strlen(debug_msg));
+        snprintf(debug_msg, sizeof(debug_msg), "Invalid pump_id: %d", pump_id);
+        pump_debug_print(debug_msg);
         return -1;
     }
     
-    // 格式化命令: /地址命令CR
-    snprintf(buffer, sizeof(buffer), "/%c%s\r", pump_address, cmd);
+    // 格式化命令: /地址命令CR+LF (根据手册需要CRLF结尾)
+    snprintf(buffer, sizeof(buffer), "/%c%s\r\n", pump_address, cmd);
     
     // 调试信息
     snprintf(debug_msg, sizeof(debug_msg), "Pump%d TX: %s", pump_id, buffer);
-    CDC_Transmit_FS((uint8_t*)debug_msg, strlen(debug_msg));
+    pump_debug_print(debug_msg);
     
     // 通过USART3发送命令
     status = HAL_UART_Transmit(&huart3, (uint8_t*)buffer, strlen(buffer), 1000);
     if (status != HAL_OK) {
-        snprintf(debug_msg, sizeof(debug_msg), "Pump%d UART TX failed: %d\r\n", pump_id, status);
-        CDC_Transmit_FS((uint8_t*)debug_msg, strlen(debug_msg));
+        snprintf(debug_msg, sizeof(debug_msg), "Pump%d UART TX failed: %d", pump_id, status);
+        pump_debug_print(debug_msg);
         return -1;
     }
     
-    // 读取响应（如果需要）
+    // 读取响应（如果需要）- 使用逐字节接收
     if (response && resp_size > 0) {
         memset(response, 0, resp_size);
         
-        // 等待响应，超时时间200ms
-        status = HAL_UART_Receive(&huart3, (uint8_t*)response, resp_size - 1, 200);
-        if (status == HAL_OK) {
-            // 找到实际接收到的数据长度
-            size_t actual_len = strlen(response);
-            if (actual_len > 0) {
-                // 调试信息：显示响应
-                snprintf(debug_msg, sizeof(debug_msg), "Pump%d RX: %s", pump_id, response);
-                CDC_Transmit_FS((uint8_t*)debug_msg, strlen(debug_msg));
-                return actual_len;
+        uint8_t rx_char;
+        size_t received_count = 0;
+        uint32_t start_time = HAL_GetTick();
+        uint32_t timeout_ms = 200;  // 总超时200ms
+        uint32_t char_timeout_ms = 50;  // 单字符超时50ms
+        
+        // 逐字节接收，直到遇到结束符或超时
+        while (received_count < (resp_size - 1)) {
+            status = HAL_UART_Receive(&huart3, &rx_char, 1, char_timeout_ms);
+            
+            if (status == HAL_OK) {
+                response[received_count] = rx_char;
+                received_count++;
+                
+                // 检查是否收到完整的结束符序列 (CRLF)
+                // 只有当收到LF并且前一个字符是CR时才结束
+                if (received_count >= 2 && 
+                    rx_char == 0x0A && 
+                    response[received_count-2] == 0x0D) {
+                    break;
+                }
+                
+                // 重置总超时计时器（收到数据说明设备在响应）
+                start_time = HAL_GetTick();
+            } else if (status == HAL_TIMEOUT) {
+                // 单字符超时，检查是否已经接收到数据
+                if (received_count > 0) {
+                    // 已有数据，可能接收完成，等待一下看是否还有数据
+                    HAL_Delay(5);  // 减少延时时间
+                    // 给已收到数据情况下额外3次重试机会
+                    static int retry_count = 0;
+                    retry_count++;
+                    if (retry_count > 3) {
+                        retry_count = 0;
+                        break;  // 重试次数用完，退出
+                    }
+                }
+                
+                // 检查总超时
+                if (HAL_GetTick() - start_time > timeout_ms) {
+                    break;  // 总超时，退出
+                }
+            } else {
+                // 其他错误，退出
+                break;
             }
-        } else if (status == HAL_TIMEOUT) {
-            snprintf(debug_msg, sizeof(debug_msg), "Pump%d UART RX timeout\r\n", pump_id);
-            CDC_Transmit_FS((uint8_t*)debug_msg, strlen(debug_msg));
-            return -2;  // 超时错误码
+        }
+        
+        // 确保字符串结束
+        response[received_count] = '\0';
+        
+        if (received_count > 0) {
+            // 调试信息：显示响应 (修复格式化问题)
+            snprintf(debug_msg, sizeof(debug_msg), "Pump%d RX (%u bytes): [%s]", pump_id, (unsigned int)received_count, response);
+            pump_debug_print(debug_msg);
+            
+            // 添加十六进制显示，帮助调试
+            char hex_debug[256];
+            snprintf(hex_debug, sizeof(hex_debug), "Pump%d RX_HEX: ", pump_id);
+            for (size_t i = 0; i < received_count && i < 20; i++) {  // 只显示前20个字节
+                char hex_byte[4];
+                snprintf(hex_byte, sizeof(hex_byte), "%02X ", (unsigned char)response[i]);
+                strcat(hex_debug, hex_byte);
+            }
+            pump_debug_print(hex_debug);
+            
+            return 0;  // 成功
         } else {
-            snprintf(debug_msg, sizeof(debug_msg), "Pump%d UART RX failed: %d\r\n", pump_id, status);
-            CDC_Transmit_FS((uint8_t*)debug_msg, strlen(debug_msg));
-            return -1;
+            snprintf(debug_msg, sizeof(debug_msg), "Pump%d RX: No data received", pump_id);
+            pump_debug_print(debug_msg);
+            return -1;  // 超时无数据
         }
     }
-    
-    return 0;  // 成功发送，无需响应
+
+    return 0;  // 只发送，不接收
 }
 
 // 初始化泵
@@ -116,19 +186,35 @@ int pump_query_error(int pump_id, char* error_code) {
 // 查询当前活塞位置
 int pump_query_position(int pump_id, int* position) {
     char response[256];
+    char debug_msg[128];
+    
     int result = send_command(pump_id, CMD_POSITION_QUERY, response, sizeof(response));
+    
+    // 添加详细的调试信息
+    snprintf(debug_msg, sizeof(debug_msg), "Position query result: %d", result);
+    pump_debug_print(debug_msg);
     
     if (result == 0 && position != NULL) {
         // 解析响应，从类似 "FF /0`3000 03 0D 0A" 格式中提取位置
+        snprintf(debug_msg, sizeof(debug_msg), "Parsing response: [%s]", response);
+        pump_debug_print(debug_msg);
+        
         // 寻找 '`' 字符后的数字
         char* pos_start = strchr(response, '`');
         if (pos_start != NULL) {
             pos_start++; // 跳过 '`' 字符
             *position = atoi(pos_start);
+            snprintf(debug_msg, sizeof(debug_msg), "Parsed position: %d", *position);
+            pump_debug_print(debug_msg);
         } else {
+            pump_debug_print("Error: No '`' character found in response");
             *position = -1;  // 解析失败
             return -1;
         }
+    } else {
+        snprintf(debug_msg, sizeof(debug_msg), "Position query failed: result=%d, position=%p", 
+                result, (void*)position);
+        pump_debug_print(debug_msg);
     }
     
     return result;

@@ -61,6 +61,8 @@
 extern ETH_HandleTypeDef heth;
 extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 extern TIM_HandleTypeDef htim7;
+extern DMA_HandleTypeDef hdma_usart3_rx;
+extern UART_HandleTypeDef huart3;
 extern TIM_HandleTypeDef htim14;
 
 /* USER CODE BEGIN EV */
@@ -166,6 +168,34 @@ void DebugMon_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles DMA1 stream1 global interrupt.
+  */
+void DMA1_Stream1_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Stream1_IRQn 0 */
+
+  /* USER CODE END DMA1_Stream1_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_usart3_rx);
+  /* USER CODE BEGIN DMA1_Stream1_IRQn 1 */
+
+  /* USER CODE END DMA1_Stream1_IRQn 1 */
+}
+
+/**
+  * @brief This function handles USART3 global interrupt.
+  */
+void USART3_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART3_IRQn 0 */
+
+  /* USER CODE END USART3_IRQn 0 */
+  HAL_UART_IRQHandler(&huart3);
+  /* USER CODE BEGIN USART3_IRQn 1 */
+
+  /* USER CODE END USART3_IRQn 1 */
+}
+
+/**
   * @brief This function handles TIM8 trigger and commutation interrupts and TIM14 global interrupt.
   */
 void TIM8_TRG_COM_TIM14_IRQHandler(void)
@@ -199,6 +229,8 @@ void TIM7_IRQHandler(void)
 void ETH_IRQHandler(void)
 {
   /* USER CODE BEGIN ETH_IRQn 0 */
+  // 注释掉频繁的ETH中断调试输出，避免CDC调试信息过载
+  /*
   uint32_t dma_status = ETH->DMASR;
   char debug_msg[128];
   
@@ -211,11 +243,15 @@ void ETH_IRQHandler(void)
            (dma_status & ETH_DMASR_TS) ? 1UL : 0UL);  // Transmit status
   
   CDC_Transmit_FS((uint8_t*)debug_msg, strlen(debug_msg));
+  */
   /* USER CODE END ETH_IRQn 0 */
   HAL_ETH_IRQHandler(&heth);
   /* USER CODE BEGIN ETH_IRQn 1 */
+  // 注释掉ETH中断完成调试输出
+  /*
   char completion_msg[] = "[ETH_IRQ] IRQ Handler completed\r\n";
   CDC_Transmit_FS((uint8_t*)completion_msg, strlen(completion_msg));
+  */
   /* USER CODE END ETH_IRQn 1 */
 }
 

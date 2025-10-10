@@ -1,4 +1,4 @@
-../Core/Src/modbus_tcp.c:6:13:cdc_debug_log	6
+../Core/Src/modbus_tcp.c:6:13:cdc_debug_log	5
 ../Core/Src/modbus_tcp.c:41:13:int_to_str	8
 ../Core/Src/modbus_tcp.c:84:13:hex_to_str	1
 ../Core/Src/modbus_tcp.c:93:13:dump_data	5

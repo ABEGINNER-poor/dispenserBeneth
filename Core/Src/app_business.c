@@ -160,7 +160,7 @@ void app_business_process(void) {
 static void cdc_debug_print(const char* message) {
     int len = snprintf(debug_buf, sizeof(debug_buf), "[BUSINESS] %s\r\n", message);
     if (len > 0 && len < sizeof(debug_buf)) {
-        CDC_Transmit_FS((uint8_t*)debug_buf, len);
+        CDC_Transmit_FS((uint8_t*)debug_buf, len);  // 暂时启用调试输出
     }
 }
 
