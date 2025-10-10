@@ -219,3 +219,76 @@ int pump_query_position(int pump_id, int* position) {
     
     return result;
 }
+
+/**
+  * @brief  解析DT协议状态字节，转换为错误编号
+  * @param  status_byte: 从泵响应中提取的状态字节（HEX值）
+  * @retval 对应的错误编号
+  * @note   根据DT协议状态字节表进行映射，忙碌和空闲状态的错误编号相同
+  */
+PumpErrorCode_t pump_parse_status_byte(uint8_t status_byte) {
+    // 提取低4位作为错误编号
+    uint8_t error_bits = status_byte & 0x0F;
+    
+    switch (error_bits) {
+        case 0x00:  // 0000 - 无误
+            return PUMP_ERROR_NO_ERROR;         // 0
+            
+        case 0x01:  // 0001 - 初始化
+            return PUMP_ERROR_INITIALIZED;      // 1
+            
+        case 0x02:  // 0010 - 无效指令
+            return PUMP_ERROR_NO_COMMAND;       // 2
+            
+        case 0x03:  // 0011 - 无效参数
+            return PUMP_ERROR_INVALID_PARAM;    // 3
+            
+        case 0x06:  // 0110 - EEPROM故障
+            return PUMP_ERROR_EEPROM_FAULT;     // 6
+            
+        case 0x07:  // 0111 - 设备未初始化
+            return PUMP_ERROR_DEVICE_NOT_INIT;  // 7
+            
+        case 0x09:  // 1001 - 柱塞过载
+            return PUMP_ERROR_OVERLOAD;         // 9
+            
+        case 0x0A:  // 1010 - 阀过载
+            return PUMP_ERROR_VALVE_OVERLOAD;   // 10
+            
+        case 0x0B:  // 1011 - 不支持柱移动
+            return PUMP_ERROR_PLUNGER_MOVE_NOT_ALLOWED; // 11
+            
+        case 0x0C:  // 1100 - 内部故障
+            return PUMP_ERROR_INTERNAL_FAULT;   // 12
+            
+        case 0x0E:  // 1110 - A/D转换器故障
+            return PUMP_ERROR_AD_FAULT;         // 14
+            
+        case 0x0F:  // 1111 - 指令溢出
+            return PUMP_ERROR_CMD_OVERFLOW;     // 15
+            
+        default:
+            // 未知错误码，默认返回内部故障
+            return PUMP_ERROR_INTERNAL_FAULT;
+    }
+}
+
+/**
+  * @brief  解析DT协议状态字节，提取忙碌状态
+  * @param  status_byte: 从泵响应中提取的状态字节（HEX值）
+  * @retval 忙碌状态 (PUMP_STATE_IDLE 或 PUMP_STATE_BUSY)
+  * @note   高4位表示忙碌状态：0x4X=忙碌，0x6X=空闲
+  */
+PumpBusyState_t pump_parse_busy_state(uint8_t status_byte) {
+    // 检查高4位
+    uint8_t busy_bits = status_byte & 0xF0;
+    
+    if (busy_bits == 0x40) {
+        return PUMP_STATE_BUSY;   // 0x4X = 忙碌
+    } else if (busy_bits == 0x60) {
+        return PUMP_STATE_IDLE;   // 0x6X = 空闲
+    } else {
+        // 未知状态，默认为忙碌（安全考虑）
+        return PUMP_STATE_BUSY;
+    }
+}

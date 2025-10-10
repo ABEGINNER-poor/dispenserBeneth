@@ -104,8 +104,8 @@ void app_business_init(void) {
     holding_regs[REG_CURRENT_ANGLE6] = 500;
     
     // 初始化泵相关寄存器
-    holding_regs[REG_PUMP1_STATUS] = 0;                   // 40029 泵1状态：直接显示错误码
-    holding_regs[REG_PUMP2_STATUS] = 0;                   // 40034 泵2状态：直接显示错误码
+    holding_regs[REG_PUMP1_STATUS] = 999;                 // 40029 泵1状态：999=未知状态，等待查询
+    holding_regs[REG_PUMP2_STATUS] = 999;                 // 40034 泵2状态：999=未知状态，等待查询
 
     
     // 初始化业务状态变量
@@ -285,33 +285,36 @@ static void process_weight_commands(void) {
   */
 static void process_pump_commands(void) {
     // 处理泵1命令
-    // 检查泵1初始化触发 (40026) - 只有当状态位(40029)为0时才允许
+    // 检查泵1初始化触发 (40026) - 只有当错误码为0且不忙时才允许
     if (holding_regs[REG_PUMP1_INIT_TRIGGER] == 1 && 
-        holding_regs[REG_PUMP1_STATUS] == 0) {  // 状态位必须为0
-        cdc_debug_print("Pump1 initialization triggered");
+        holding_regs[REG_PUMP1_STATUS] == 0 && pump1_busy == 0) {  // 错误码为0且不忙
+        cdc_debug_print("Pump1 initialization triggered (idle & no error)");
         
         // 发送泵1初始化命令
         if (pump_init_device(1) == 0) {
             cdc_debug_print("Pump1 init command sent successfully");
-            // 位置和状态将通过查询来更新，不在这里直接设置
+            // 发送后立即置状态为2
+            holding_regs[REG_PUMP1_INIT_TRIGGER] = 2;
+            last_pump1_init_trigger = 2;
         } else {
             cdc_debug_print("Pump1 init command failed");
+            // 发送失败也置状态为2
+            holding_regs[REG_PUMP1_INIT_TRIGGER] = 2;
         }
-        
-        // 发送后立即置状态为2
-        holding_regs[REG_PUMP1_INIT_TRIGGER] = 2;
-        last_pump1_init_trigger = 2;
     } else if (holding_regs[REG_PUMP1_INIT_TRIGGER] == 1 && 
-               holding_regs[REG_PUMP1_STATUS] != 0) {
-        cdc_debug_print("Pump1 init rejected: status not 0");
+               (holding_regs[REG_PUMP1_STATUS] != 0 || pump1_busy == 1)) {
+        char reject_msg[80];
+        snprintf(reject_msg, sizeof(reject_msg), "Pump1 init rejected: error=%d, busy=%d", 
+                holding_regs[REG_PUMP1_STATUS], pump1_busy);
+        cdc_debug_print(reject_msg);
         // 立即置初始化位为2，表示无法执行
         holding_regs[REG_PUMP1_INIT_TRIGGER] = 2;
     }
     
-    // 检查泵1控制触发 (40028) - 只有当状态位(40029)为0时才允许
+    // 检查泵1控制触发 (40028) - 只有当错误码为0且不忙时才允许
     if (holding_regs[REG_PUMP1_CONTROL_TRIGGER] == 1 && 
-        holding_regs[REG_PUMP1_STATUS] == 0) {  // 状态位必须为0
-        cdc_debug_print("Pump1 control triggered");
+        holding_regs[REG_PUMP1_STATUS] == 0 && pump1_busy == 0) {  // 错误码为0且不忙
+        cdc_debug_print("Pump1 control triggered (idle & no error)");
         
         // 获取目标位置 (40027)
         uint16_t target_position = holding_regs[REG_PUMP1_ABS_POSITION];
@@ -321,58 +324,67 @@ static void process_pump_commands(void) {
             // 发送泵1移动命令
             if (pump_move_absolute_device(1, target_position) == 0) {
                 pump1_move_start_time = HAL_GetTick();  // 记录开始时间
-                // 状态将通过查询错误码来更新，不在这里直接设置
                 cdc_debug_print("Pump1 move command sent successfully");
                 
                 // 调试信息：显示目标位置
                 char pos_msg[50];
                 snprintf(pos_msg, sizeof(pos_msg), "Pump1 moving to position: %d", target_position);
                 cdc_debug_print(pos_msg);
+                
+                // 发送后立即置状态为2
+                holding_regs[REG_PUMP1_CONTROL_TRIGGER] = 2;
+                last_pump1_control_trigger = 2;
             } else {
                 cdc_debug_print("Pump1 move command failed");
+                // 发送失败也置状态为2
+                holding_regs[REG_PUMP1_CONTROL_TRIGGER] = 2;
             }
         } else {
             cdc_debug_print("Pump1 target position out of range (0-6000)");
+            // 参数错误也置状态为2
+            holding_regs[REG_PUMP1_CONTROL_TRIGGER] = 2;
         }
-        
-        // 发送后立即置状态为2
-        holding_regs[REG_PUMP1_CONTROL_TRIGGER] = 2;
-        last_pump1_control_trigger = 2;
     } else if (holding_regs[REG_PUMP1_CONTROL_TRIGGER] == 1 && 
-               holding_regs[REG_PUMP1_STATUS] != 0) {
-        cdc_debug_print("Pump1 control rejected: status not 0");
+               (holding_regs[REG_PUMP1_STATUS] != 0 || pump1_busy == 1)) {
+        char reject_msg[80];
+        snprintf(reject_msg, sizeof(reject_msg), "Pump1 control rejected: error=%d, busy=%d", 
+                holding_regs[REG_PUMP1_STATUS], pump1_busy);
+        cdc_debug_print(reject_msg);
         // 立即置控制位为2，表示无法执行
         holding_regs[REG_PUMP1_CONTROL_TRIGGER] = 2;
     }
     
     // 处理泵2命令 (类似泵1)
-    // 检查泵2初始化触发 (40031) - 只有当状态位(40034)为0时才允许
+    // 检查泵2初始化触发 (40031) - 只有当错误码为0且不忙时才允许
     if (holding_regs[REG_PUMP2_INIT_TRIGGER] == 1 && 
-        holding_regs[REG_PUMP2_STATUS] == 0) {  // 状态位必须为0
-        cdc_debug_print("Pump2 initialization triggered");
+        holding_regs[REG_PUMP2_STATUS] == 0 && pump2_busy == 0) {  // 错误码为0且不忙
+        cdc_debug_print("Pump2 initialization triggered (idle & no error)");
         
         // 发送泵2初始化命令
         if (pump_init_device(2) == 0) {
             cdc_debug_print("Pump2 init command sent successfully");
-            // 位置和状态将通过查询来更新，不在这里直接设置
+            // 发送后立即置状态为2
+            holding_regs[REG_PUMP2_INIT_TRIGGER] = 2;
+            last_pump2_init_trigger = 2;
         } else {
             cdc_debug_print("Pump2 init command failed");
+            // 发送失败也置状态为2
+            holding_regs[REG_PUMP2_INIT_TRIGGER] = 2;
         }
-        
-        // 发送后立即置状态为2
-        holding_regs[REG_PUMP2_INIT_TRIGGER] = 2;
-        last_pump2_init_trigger = 2;
     } else if (holding_regs[REG_PUMP2_INIT_TRIGGER] == 1 && 
-               holding_regs[REG_PUMP2_STATUS] != 0) {
-        cdc_debug_print("Pump2 init rejected: status not 0");
+               (holding_regs[REG_PUMP2_STATUS] != 0 || pump2_busy == 1)) {
+        char reject_msg[80];
+        snprintf(reject_msg, sizeof(reject_msg), "Pump2 init rejected: error=%d, busy=%d", 
+                holding_regs[REG_PUMP2_STATUS], pump2_busy);
+        cdc_debug_print(reject_msg);
         // 立即置初始化位为2，表示无法执行
         holding_regs[REG_PUMP2_INIT_TRIGGER] = 2;
     }
     
-    // 检查泵2控制触发 (40033) - 只有当状态位(40034)为0时才允许
+    // 检查泵2控制触发 (40033) - 只有当错误码为0且不忙时才允许
     if (holding_regs[REG_PUMP2_CONTROL_TRIGGER] == 1 && 
-        holding_regs[REG_PUMP2_STATUS] == 0) {  // 状态位必须为0
-            cdc_debug_print("Pump2 control triggered");
+        holding_regs[REG_PUMP2_STATUS] == 0 && pump2_busy == 0) {  // 错误码为0且不忙
+            cdc_debug_print("Pump2 control triggered (idle & no error)");
             
             // 获取目标位置 (40032)
             uint16_t target_position = holding_regs[REG_PUMP2_ABS_POSITION];
@@ -382,26 +394,32 @@ static void process_pump_commands(void) {
                 // 发送泵2移动命令
                 if (pump_move_absolute_device(2, target_position) == 0) {
                     pump2_move_start_time = HAL_GetTick();  // 记录开始时间
-                    // 状态将通过查询错误码来更新，不在这里直接设置
                     cdc_debug_print("Pump2 move command sent successfully");
                     
                     // 调试信息：显示目标位置
                     char pos_msg[50];
                     snprintf(pos_msg, sizeof(pos_msg), "Pump2 moving to position: %d", target_position);
                     cdc_debug_print(pos_msg);
+                    
+                    // 发送后立即置状态为2
+                    holding_regs[REG_PUMP2_CONTROL_TRIGGER] = 2;
+                    last_pump2_control_trigger = 2;
                 } else {
                     cdc_debug_print("Pump2 move command failed");
+                    // 发送失败也置状态为2
+                    holding_regs[REG_PUMP2_CONTROL_TRIGGER] = 2;
                 }
             } else {
                 cdc_debug_print("Pump2 target position out of range (0-6000)");
+                // 参数错误也置状态为2
+                holding_regs[REG_PUMP2_CONTROL_TRIGGER] = 2;
             }
-        
-        // 发送后立即置状态为2
-        holding_regs[REG_PUMP2_CONTROL_TRIGGER] = 2;
-        last_pump2_control_trigger = 2;
     } else if (holding_regs[REG_PUMP2_CONTROL_TRIGGER] == 1 && 
-               holding_regs[REG_PUMP2_STATUS] != 0) {
-        cdc_debug_print("Pump2 control rejected: status not 0");
+               (holding_regs[REG_PUMP2_STATUS] != 0 || pump2_busy == 1)) {
+        char reject_msg[80];
+        snprintf(reject_msg, sizeof(reject_msg), "Pump2 control rejected: error=%d, busy=%d", 
+                holding_regs[REG_PUMP2_STATUS], pump2_busy);
+        cdc_debug_print(reject_msg);
         // 立即置控制位为2，表示无法执行
         holding_regs[REG_PUMP2_CONTROL_TRIGGER] = 2;
     }
@@ -537,14 +555,18 @@ static int pump_get_status_device(uint8_t pump_id) {
   * @retval None
   */
 static void pump_update_status(uint8_t pump_id) {
-    static uint32_t last_update_time = 0;
+    static uint32_t last_update_time1 = 0;  // 泵1的时间控制
+    static uint32_t last_update_time2 = 0;  // 泵2的时间控制
     uint32_t current_time = HAL_GetTick();
     
+    // 根据泵ID选择对应的时间控制变量
+    uint32_t* last_time_ptr = (pump_id == 1) ? &last_update_time1 : &last_update_time2;
+    
     // 降低查询频率，每1秒查询一次
-    if (current_time - last_update_time < 1000) {
+    if (current_time - *last_time_ptr < 1000) {
         return;
     }
-    last_update_time = current_time;
+    *last_time_ptr = current_time;
     
     char error_response[256];
     int current_position;
@@ -552,30 +574,34 @@ static void pump_update_status(uint8_t pump_id) {
     if (pump_id == 1) {
         // 查询错误码 (/1QR)
         if (pump_query_error(1, error_response) == 0) {
-            // 从响应中提取错误码数字部分
-            char* code_start = strchr(error_response, '`');
-            if (code_start != NULL) {
-                code_start++; // 跳过 '`' 字符
-                int error_code = atoi(code_start);
+            // 从响应中解析状态字节
+            // 响应格式：FF /0`3000 03 0D 0A
+            // 第3个字节（'`'字符）是状态字节的HEX值
+            char* status_byte_ptr = strchr(error_response, '`');
+            if (status_byte_ptr != NULL) {
+                // 提取状态字节
+                uint8_t status_byte = (uint8_t)(*status_byte_ptr);
+                
+                // 使用枚举解析状态字节，转换为错误编号
+                PumpErrorCode_t error_code = pump_parse_status_byte(status_byte);
+                PumpBusyState_t busy_state = pump_parse_busy_state(status_byte);
                 
                 // 直接将错误码写入状态寄存器
-                holding_regs[REG_PUMP1_STATUS] = error_code;
+                holding_regs[REG_PUMP1_STATUS] = (uint16_t)error_code;
                 
-                // 更新内部忙状态逻辑（用于内部判断）
-                if (error_code == 15) {  // 指令溢出 = 忙
-                    pump1_busy = 1;
-                } else if (error_code == 0) {  // 无误 = 不忙
-                    pump1_busy = 0;
-                } else {
-                    pump1_busy = 1;  // 其他错误也认为是忙状态
-                }
+                // 更新内部忙状态逻辑
+                pump1_busy = (busy_state == PUMP_STATE_BUSY) ? 1 : 0;
                 
-                char debug_msg[60];
-                snprintf(debug_msg, sizeof(debug_msg), "Pump1 error code: %d", error_code);
+                char debug_msg[100];
+                snprintf(debug_msg, sizeof(debug_msg), "Pump1: byte=0x%02X, error=%d, busy=%s", 
+                        status_byte, error_code, (busy_state == PUMP_STATE_BUSY) ? "YES" : "NO");
                 cdc_debug_print(debug_msg);
             }
         } else {
             cdc_debug_print("Pump1 query error failed");
+            // 通信失败，设置为通信错误状态
+            holding_regs[REG_PUMP1_STATUS] = 999;  // 999 = 通信失败
+            pump1_busy = 1;  // 通信失败时认为忙碌（安全考虑）
         }
         
         // 查询当前活塞位置 (/1?4R)
@@ -593,29 +619,34 @@ static void pump_update_status(uint8_t pump_id) {
     } else if (pump_id == 2) {
         // 查询错误码 (/2QR)
         if (pump_query_error(2, error_response) == 0) {
-            char* code_start = strchr(error_response, '`');
-            if (code_start != NULL) {
-                code_start++; // 跳过 '`' 字符
-                int error_code = atoi(code_start);
+            // 从响应中解析状态字节
+            // 响应格式：FF /0`3000 03 0D 0A
+            // 第3个字节（'`'字符）是状态字节的HEX值
+            char* status_byte_ptr = strchr(error_response, '`');
+            if (status_byte_ptr != NULL) {
+                // 提取状态字节
+                uint8_t status_byte = (uint8_t)(*status_byte_ptr);
+                
+                // 使用枚举解析状态字节，转换为错误编号
+                PumpErrorCode_t error_code = pump_parse_status_byte(status_byte);
+                PumpBusyState_t busy_state = pump_parse_busy_state(status_byte);
                 
                 // 直接将错误码写入状态寄存器
-                holding_regs[REG_PUMP2_STATUS] = error_code;
+                holding_regs[REG_PUMP2_STATUS] = (uint16_t)error_code;
                 
-                // 更新内部忙状态逻辑（用于内部判断）
-                if (error_code == 15) {  // 指令溢出 = 忙
-                    pump2_busy = 1;
-                } else if (error_code == 0) {  // 无误 = 不忙
-                    pump2_busy = 0;
-                } else {
-                    pump2_busy = 1;  // 其他错误也认为是忙状态
-                }
+                // 更新内部忙状态逻辑
+                pump2_busy = (busy_state == PUMP_STATE_BUSY) ? 1 : 0;
                 
-                char debug_msg[60];
-                snprintf(debug_msg, sizeof(debug_msg), "Pump2 error code: %d", error_code);
+                char debug_msg[100];
+                snprintf(debug_msg, sizeof(debug_msg), "Pump2: byte=0x%02X, error=%d, busy=%s", 
+                        status_byte, error_code, (busy_state == PUMP_STATE_BUSY) ? "YES" : "NO");
                 cdc_debug_print(debug_msg);
             }
         } else {
             cdc_debug_print("Pump2 UART RX timeout");
+            // 通信失败，设置为通信错误状态
+            holding_regs[REG_PUMP2_STATUS] = 999;  // 999 = 通信失败
+            pump2_busy = 1;  // 通信失败时认为忙碌（安全考虑）
         }
         
         // 查询当前活塞位置 (/2?4R)

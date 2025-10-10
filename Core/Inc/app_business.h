@@ -48,12 +48,12 @@ extern "C" {
 #define REG_PUMP1_INIT_TRIGGER      26    // 40026 泵1初始化触发
 #define REG_PUMP1_ABS_POSITION      27    // 40027 泵1绝对位置设置 uint16 步数(0-6000)
 #define REG_PUMP1_CONTROL_TRIGGER   28    // 40028 泵1控制触发
-#define REG_PUMP1_STATUS            29    // 40029 泵1状态位 只读 1=忙 2=不忙
+#define REG_PUMP1_STATUS            29    // 40029 泵1状态位 只读 0-15=DT错误码, 999=通信失败/未初始化
 #define REG_PUMP1_CURRENT_POSITION  30    // 40030 泵1当前位置 uint16 步数(0-6000) 只读
 #define REG_PUMP2_INIT_TRIGGER      31    // 40031 泵2初始化触发
 #define REG_PUMP2_ABS_POSITION      32    // 40032 泵2绝对位置设置 uint16 步数(0-6000)
 #define REG_PUMP2_CONTROL_TRIGGER   33    // 40033 泵2控制触发
-#define REG_PUMP2_STATUS            34    // 40034 泵2状态位 只读 1=忙 2=不忙
+#define REG_PUMP2_STATUS            34    // 40034 泵2状态位 只读 0-15=DT错误码, 999=通信失败/未初始化
 #define REG_PUMP2_CURRENT_POSITION  35    // 40035 泵2当前位置 uint16 步数(0-6000) 只读
 #define REG_OBJECT_DETECTION        36    // 40036 物体检测状态 只读 1=无物体 2=有
 
