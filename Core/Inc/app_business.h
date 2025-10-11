@@ -70,6 +70,13 @@ extern "C" {
 void app_business_init(void);
 void app_business_process(void);
 
+// 调试函数声明
+void cdc_debug_print(const char* message);
+
+// 舵机接收线程通信函数
+uint8_t get_servo_positions_from_recv_thread(uint16_t *positions);
+void request_servo_read(void);
+
 #ifdef __cplusplus
 }
 #endif

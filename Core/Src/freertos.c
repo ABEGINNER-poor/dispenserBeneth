@@ -28,6 +28,7 @@
 #include "modbus_tcp.h"
 #include "app_business.h"
 #include "usbd_cdc_if.h"
+#include "bus_servo.h"
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -51,6 +52,11 @@
 static uint32_t business_cycle_counter = 0;  // 业务处理计数器
 static char debug_buf[64];                    // Keep alive 调试缓冲区
 static uint32_t keep_alive_counter = 0;       // Keep alive 计数器
+
+// 舵机接收线程共享变量
+static uint16_t servo_positions_shared[6] = {500, 500, 500, 500, 500, 500};  // 共享的舵机位置数据
+static volatile uint8_t servo_data_ready = 0;  // 数据就绪标志
+static volatile uint8_t servo_read_request = 0;  // 读取请求标志
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
 
@@ -161,5 +167,29 @@ void StartDefaultTask(void const * argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+
+/**
+  * @brief  获取舵机位置数据（线程安全）
+  * @param  positions: 用于存储位置数据的数组
+  * @retval 1 if data is ready, 0 if no new data
+  */
+uint8_t get_servo_positions_from_recv_thread(uint16_t *positions) {
+  if (servo_data_ready) {
+    for (int i = 0; i < 6; i++) {
+      positions[i] = servo_positions_shared[i];
+    }
+    servo_data_ready = 0;  // 清除数据就绪标志
+    return 1;
+  }
+  return 0;
+}
+
+/**
+  * @brief  请求舵机读取（从业务线程调用）
+  * @retval None
+  */
+void request_servo_read(void) {
+  servo_read_request = 1;  // 设置读取请求标志
+}
 
 /* USER CODE END Application */

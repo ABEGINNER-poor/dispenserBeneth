@@ -15,10 +15,13 @@ static void pump_debug_print(const char* message);
   * @retval None
   */
 static void pump_debug_print(const char* message) {
+    // 注释掉调试输出以减少干扰
+    /*
     int len = snprintf(pump_debug_buf, sizeof(pump_debug_buf), "[PUMP] %s\r\n", message);
     if (len > 0 && len < sizeof(pump_debug_buf)) {
         CDC_Transmit_FS((uint8_t*)pump_debug_buf, len);  // 暂时启用调试输出
     }
+    */
 }
 
 // 发送命令并读取响应 - STM32 USART3版本 - 简化的不定长接收

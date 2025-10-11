@@ -22,8 +22,17 @@ void BusServo_ActionGroupStop(void);
 void BusServo_ActionGroupSpeed(uint8_t group, uint16_t speed_percent);
 uint16_t BusServo_GetBatteryVoltage(void);
 void BusServo_MultUnload(uint8_t *ids, uint8_t id_cnt);
-void BusServo_MultPosRead(uint8_t *ids, uint8_t id_cnt, uint16_t *positions);
-uint16_t BusServo_ReadSinglePosition(uint8_t id);  // 新增：读取单个舵机位置
-void BusServo_MultMove(uint8_t *ids, uint16_t *positions, uint8_t servo_count, uint16_t time);  // 新增：多舵机同时移动
+void BusServo_MultMove(uint8_t *ids, uint16_t *positions, uint8_t servo_count, uint16_t time);  // 多舵机同时移动
+
+// 舵机位置读取相关函数（统一发送统一接收）
+void BusServo_MultPosRead(uint8_t *ids, uint8_t id_cnt, uint16_t *positions);  // 非阻塞版本
+uint8_t BusServo_CheckReadStatus(void);  // 检查读取状态
+void BusServo_ParseResponse(void);  // 解析响应数据
+
+// 批量舵机读取相关函数（用于线程）
+void BusServo_BatchSendReadCommands(void);  // 批量发送6个舵机读取命令
+uint8_t BusServo_CheckBatchReadStatus(void);  // 检查批量读取状态
+void BusServo_ParseBatchResponse(void);  // 解析批量响应
+void BusServo_GetBatchResults(uint16_t *positions);  // 获取批量读取结果
 
 #endif
