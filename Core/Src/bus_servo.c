@@ -224,8 +224,8 @@ uint8_t BusServo_CheckReadStatus(void) {
         return 1;  // 部分完成
     }
     
-    // 总体超时检查 - 500ms超时
-    if (elapsed > 500) {
+    // 总体超时检查 - 50ms超时
+    if (elapsed > 50) {
         HAL_UART_DMAStop(&huart6);
         
         char timeout_msg[80];
