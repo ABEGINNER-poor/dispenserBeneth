@@ -104,7 +104,9 @@ void app_business_init(void) {
     
     // 初始化泵相关寄存器
     holding_regs[REG_PUMP1_STATUS] = 999;                 // 40029 泵1状态：999=未知状态，等待查询
+    holding_regs[REG_PUMP1_CURRENT_POSITION] = 9999;      // 40030 泵1当前位置：9999=上电默认值
     holding_regs[REG_PUMP2_STATUS] = 999;                 // 40034 泵2状态：999=未知状态，等待查询
+    holding_regs[REG_PUMP2_CURRENT_POSITION] = 9999;      // 40035 泵2当前位置：9999=上电默认值
 
     
     // 初始化业务状态变量

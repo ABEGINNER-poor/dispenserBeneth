@@ -178,9 +178,11 @@ uint8_t BusServo_CheckReadStatus(void) {
     }
     
     uint32_t elapsed = HAL_GetTick() - servo_start_time;
+    uint32_t received = servo_expected_len - huart6.RxXferCount;
     
-    // 检查DMA是否完成
+    // 检查DMA是否完成（接收到期望的全部数据）
     if (huart6.RxXferCount == 0) {
+        HAL_UART_DMAStop(&huart6);
         char complete_msg[80];
         snprintf(complete_msg, sizeof(complete_msg), "Receive complete in %ldms", elapsed);
         cdc_debug_print(complete_msg);
@@ -198,12 +200,37 @@ uint8_t BusServo_CheckReadStatus(void) {
         return 1;  // 成功完成
     }
     
-    // 超时检查 - 500ms超时
+    // 如果接收到部分数据且已等待5ms，处理已接收的数据
+    if (received > 0 && elapsed >= 5) {
+        HAL_UART_DMAStop(&huart6);
+        
+        char partial_msg[80];
+        snprintf(partial_msg, sizeof(partial_msg), "Partial receive: %ld/%d bytes in %ldms", 
+                received, servo_expected_len, elapsed);
+        cdc_debug_print(partial_msg);
+        
+        // 打印已接收的数据
+        char hex_msg[200];
+        int offset = snprintf(hex_msg, sizeof(hex_msg), "RX partial: ");
+        for (int i = 0; i < received && i < 30; i++) {
+            offset += snprintf(hex_msg + offset, sizeof(hex_msg) - offset, "%02X ", servo_rx_buf[i]);
+        }
+        cdc_debug_print(hex_msg);
+        
+        // 调整期望长度为实际接收长度，然后解析
+        servo_expected_len = received;
+        BusServo_ParseResponse();
+        servo_reading_flag = 0;
+        return 1;  // 部分完成
+    }
+    
+    // 总体超时检查 - 500ms超时
     if (elapsed > 500) {
         HAL_UART_DMAStop(&huart6);
         
         char timeout_msg[80];
-        snprintf(timeout_msg, sizeof(timeout_msg), "Timeout after %ldms", elapsed);
+        snprintf(timeout_msg, sizeof(timeout_msg), "Timeout after %ldms, received %ld/%d bytes", 
+                elapsed, received, servo_expected_len);
         cdc_debug_print(timeout_msg);
         
         servo_reading_flag = 0;

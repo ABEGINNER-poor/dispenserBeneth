@@ -7,9 +7,9 @@
 ../Core/Src/bus_servo.c:88:10:BusServo_GetBatteryVoltage	5
 ../Core/Src/bus_servo.c:106:6:BusServo_MultUnload	1
 ../Core/Src/bus_servo.c:129:6:BusServo_MultPosRead	4
-../Core/Src/bus_servo.c:175:9:BusServo_CheckReadStatus	6
-../Core/Src/bus_servo.c:217:6:BusServo_ParseResponse	10
-../Core/Src/bus_servo.c:280:6:BusServo_BatchSendReadCommands	5
-../Core/Src/bus_servo.c:333:9:BusServo_CheckBatchReadStatus	7
-../Core/Src/bus_servo.c:396:6:BusServo_ParseBatchResponse	14
-../Core/Src/bus_servo.c:450:6:BusServo_GetBatchResults	2
+../Core/Src/bus_servo.c:175:9:BusServo_CheckReadStatus	10
+../Core/Src/bus_servo.c:244:6:BusServo_ParseResponse	10
+../Core/Src/bus_servo.c:307:6:BusServo_BatchSendReadCommands	5
+../Core/Src/bus_servo.c:360:9:BusServo_CheckBatchReadStatus	7
+../Core/Src/bus_servo.c:423:6:BusServo_ParseBatchResponse	14
+../Core/Src/bus_servo.c:477:6:BusServo_GetBatchResults	2
